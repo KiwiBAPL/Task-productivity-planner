@@ -1,0 +1,626 @@
+{
+  "meta": {
+    "name": "Auro Dark Glass (Violet Accent)",
+    "version": "1.0.0",
+    "source": {
+      "referenceImages": [
+        "Images/Screenshot 2026-01-05 at 11.52.54 am.png"
+      ],
+      "notes": [
+        "Design language: dark, premium, glassy surfaces with soft elevation and a single violet accent.",
+        "Avoid hard borders and harsh contrast; rely on blur, subtle gradients, and gentle shadows."
+      ]
+    },
+    "intendedUse": "High-level design system guidelines for an AI/code generator to replicate this look across web + native UI. When implementing components, reference the tamagui.config.ts and theme files listed in implementationNotes.tamagui for actual token values and implementation details."
+  },
+  "creativeDirection": {
+    "designStyle": [
+      "Dark glassmorphism",
+      "Soft neumorphic-influenced depth (subtle highlights + shadows, not skeuomorphic)",
+      "Premium fintech / crypto dashboard feel",
+      "Minimal, spacious, calm; emphasis via size/weight, not many colors"
+    ],
+    "corePrinciples": [
+      "One accent, many neutrals: keep the UI mostly grayscale; use violet/purple for primary actions and key highlights.",
+      "Depth comes from translucency: surfaces are semi-opaque with blur and faint border highlights.",
+      "Rounded everything: large radii on containers, pill radii on controls, circular icon chips.",
+      "Hierarchy via composition: big hero surface, supporting right rail of stacked cards, quiet left navigation.",
+      "Readable in low light: prioritize contrast for primary text; secondary text is subdued but never muddy."
+    ],
+    "do": [
+      "Use layered surfaces: background -> app shell -> panels -> cards -> controls.",
+      "Add subtle internal highlights (top edge) and soft drop shadows for elevation.",
+      "Use consistent spacing scale and generous padding to preserve the premium feel.",
+      "Prefer pill-shaped controls and list rows with soft separators (opacity-based)."
+    ],
+    "dont": [
+      "Do not use bright saturated palettes beyond the accent.",
+      "Do not use sharp 1px high-contrast borders or aggressive dividers.",
+      "Do not mix many font families or weights; keep typography restrained.",
+      "Do not use heavy gradients in UI chrome; reserve gradients for hero/feature surfaces."
+    ]
+  },
+  "tokens": {
+    "color": {
+      "model": "RGBA-first (supports translucency). Provide hex for solid fallback.",
+      "neutral": {
+        "bg0": { "hex": "#0B0C10", "usage": "App background base (very dark)" },
+        "bg1": { "hex": "#0F1118", "usage": "Deeper backdrop behind panels" },
+        "surface0": { "rgba": [0.10, 0.11, 0.14, 0.72], "hexFallback": "#1A1C24", "usage": "Primary glass panel surface" },
+        "surface1": { "rgba": [0.14, 0.15, 0.19, 0.74], "hexFallback": "#232633", "usage": "Raised card surface" },
+        "surface2": { "rgba": [0.18, 0.19, 0.24, 0.78], "hexFallback": "#2C3040", "usage": "Highest elevation / interactive hover surface" },
+        "strokeSubtle": { "rgba": [1, 1, 1, 0.08], "hexFallback": "#FFFFFF14", "usage": "Soft borders on glass surfaces" },
+        "strokeStrong": { "rgba": [1, 1, 1, 0.14], "hexFallback": "#FFFFFF24", "usage": "Focused/active outline (still subtle)" },
+        "divider": { "rgba": [1, 1, 1, 0.06], "hexFallback": "#FFFFFF0F", "usage": "Quiet separators in dense lists" }
+      },
+      "text": {
+        "primary": { "hex": "#F4F6FF", "usage": "Primary text on dark" },
+        "secondary": { "rgba": [0.96, 0.97, 1, 0.72], "hexFallback": "#F4F6FFB8", "usage": "Secondary labels and metadata" },
+        "tertiary": { "rgba": [0.96, 0.97, 1, 0.52], "hexFallback": "#F4F6FF85", "usage": "Muted helper text" },
+        "disabled": { "rgba": [0.96, 0.97, 1, 0.34], "hexFallback": "#F4F6FF57", "usage": "Disabled state text" },
+        "inverse": { "hex": "#0B0C10", "usage": "Text on light pill buttons" }
+      },
+      "accent": {
+        "primary": { "hex": "#8B5CF6", "usage": "Primary brand accent (violet)" },
+        "primarySoft": { "rgba": [0.55, 0.35, 0.96, 0.22], "hexFallback": "#8B5CF638", "usage": "Accent wash for backgrounds / chips" },
+        "primaryGlow": { "rgba": [0.55, 0.35, 0.96, 0.35], "hexFallback": "#8B5CF659", "usage": "Outer glow, focus rings, hero lighting" },
+        "gradientHero": {
+          "type": "linear",
+          "angleDeg": 135,
+          "stops": [
+            { "color": "rgba(139,92,246,0.55)", "pos": 0 },
+            { "color": "rgba(59,130,246,0.22)", "pos": 35 },
+            { "color": "rgba(16,185,129,0.10)", "pos": 80 },
+            { "color": "rgba(0,0,0,0)", "pos": 100 }
+          ],
+          "usage": "Hero panel lighting / feature card background overlay"
+        }
+      },
+      "semantic": {
+        "success": { "hex": "#34D399", "usage": "Positive states (sparingly)" },
+        "warning": { "hex": "#FBBF24", "usage": "Warnings (sparingly)" },
+        "danger": { "hex": "#FB7185", "usage": "Destructive actions (sparingly)" },
+        "info": { "hex": "#60A5FA", "usage": "Informational highlights (sparingly)" }
+      }
+    },
+    "typography": {
+      "fontFamily": {
+        "sans": {
+          "preferred": "Inter",
+          "fallback": ["SF Pro Display", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+          "usage": "All UI"
+        },
+        "mono": {
+          "preferred": "SF Mono",
+          "fallback": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+          "usage": "Numbers, addresses, code-like content"
+        }
+      },
+      "scalePx": {
+        "xs": 12,
+        "sm": 13,
+        "md": 14,
+        "lg": 16,
+        "xl": 20,
+        "2xl": 28,
+        "3xl": 40
+      },
+      "lineHeight": {
+        "tight": 1.1,
+        "snug": 1.25,
+        "normal": 1.45
+      },
+      "weight": {
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600
+      },
+      "letterSpacingEm": {
+        "tight": -0.02,
+        "normal": 0,
+        "caps": 0.08
+      },
+      "usage": {
+        "displayHero": {
+          "font": "sans",
+          "size": "3xl",
+          "weight": "semibold",
+          "lineHeight": "tight",
+          "letterSpacing": "tight"
+        },
+        "title": {
+          "font": "sans",
+          "size": "2xl",
+          "weight": "semibold",
+          "lineHeight": "snug",
+          "letterSpacing": "tight"
+        },
+        "cardTitle": { "font": "sans", "size": "lg", "weight": "semibold", "lineHeight": "snug" },
+        "body": { "font": "sans", "size": "md", "weight": "regular", "lineHeight": "normal" },
+        "label": { "font": "sans", "size": "sm", "weight": "medium", "lineHeight": "snug" },
+        "meta": { "font": "sans", "size": "xs", "weight": "medium", "lineHeight": "snug", "letterSpacing": "caps" },
+        "numeric": { "font": "mono", "size": "md", "weight": "medium", "lineHeight": "snug" }
+      }
+    },
+    "spacing": {
+      "basePx": 4,
+      "scalePx": {
+        "0": 0,
+        "1": 4,
+        "2": 8,
+        "3": 12,
+        "4": 16,
+        "5": 20,
+        "6": 24,
+        "7": 28,
+        "8": 32,
+        "10": 40,
+        "12": 48,
+        "14": 56,
+        "16": 64
+      },
+      "guidelines": [
+        "Default internal padding for cards: 20–24px (scale 5–6).",
+        "Default gap between stacked cards: 12–16px (scale 3–4).",
+        "Right rail components are denser: 16–20px padding, 12px gaps.",
+        "Maintain generous outer margins around major regions: 24–32px."
+      ]
+    },
+    "radii": {
+      "scalePx": {
+        "sm": 10,
+        "md": 14,
+        "lg": 18,
+        "xl": 24,
+        "2xl": 32,
+        "pill": 999
+      },
+      "guidelines": [
+        "Primary containers/panels use 24–32px radius.",
+        "Cards and list rows use 18–24px radius.",
+        "Inputs, pills, and buttons use full pill radius."
+      ]
+    },
+    "border": {
+      "widthPx": { "hairline": 1, "focus": 1 },
+      "style": "solid",
+      "defaultColorToken": "color.neutral.strokeSubtle"
+    },
+    "shadow": {
+      "philosophy": "Shadows are wide, soft, low opacity. Add a faint top highlight for glass.",
+      "presets": {
+        "panel": [
+          { "x": 0, "y": 20, "blur": 60, "spread": -20, "color": "rgba(0,0,0,0.55)" },
+          { "x": 0, "y": 2, "blur": 0, "spread": 0, "color": "rgba(255,255,255,0.04)", "inset": true }
+        ],
+        "card": [
+          { "x": 0, "y": 14, "blur": 40, "spread": -18, "color": "rgba(0,0,0,0.55)" },
+          { "x": 0, "y": 1, "blur": 0, "spread": 0, "color": "rgba(255,255,255,0.05)", "inset": true }
+        ],
+        "control": [
+          { "x": 0, "y": 10, "blur": 26, "spread": -16, "color": "rgba(0,0,0,0.55)" },
+          { "x": 0, "y": 1, "blur": 0, "spread": 0, "color": "rgba(255,255,255,0.06)", "inset": true }
+        ],
+        "glowAccent": [
+          { "x": 0, "y": 0, "blur": 22, "spread": 0, "color": "rgba(139,92,246,0.30)" }
+        ]
+      }
+    },
+    "blur": {
+      "backdropBlurPx": { "panel": 18, "card": 14, "control": 10 },
+      "guidelines": [
+        "Use backdrop blur on any translucent surface; opacity without blur looks cheap.",
+        "When blur is unavailable (native fallbacks), increase surface opacity slightly."
+      ]
+    },
+    "motion": {
+      "durationMs": { "fast": 120, "normal": 180, "slow": 260 },
+      "easing": { "standard": "cubic-bezier(0.2, 0.8, 0.2, 1)", "entrance": "cubic-bezier(0.16, 1, 0.3, 1)" },
+      "principles": [
+        "Micro-interactions are subtle: small scale/translate + opacity.",
+        "Hover/focus increases elevation slightly and strengthens border highlight.",
+        "Avoid bouncy motion; keep it sleek and controlled."
+      ]
+    },
+    "iconography": {
+      "style": "Outline icons with rounded corners; minimal stroke details.",
+      "strokeWidthPx": 1.75,
+      "sizesPx": { "sm": 16, "md": 20, "lg": 24 },
+      "containers": [
+        "Icons often sit in circular/pill chips with glass background and subtle border."
+      ]
+    }
+  },
+  "layout": {
+    "appShell": {
+      "structure": "Left sidebar + main content (hero + below content) + optional right rail (cards).",
+      "background": {
+        "base": "color.neutral.bg0",
+        "overlay": [
+          {
+            "type": "radial",
+            "at": "top-left",
+            "stops": [
+              { "color": "rgba(139,92,246,0.20)", "pos": 0 },
+              { "color": "rgba(139,92,246,0.00)", "pos": 60 }
+            ]
+          },
+          {
+            "type": "radial",
+            "at": "mid-left",
+            "stops": [
+              { "color": "rgba(59,130,246,0.12)", "pos": 0 },
+              { "color": "rgba(59,130,246,0.00)", "pos": 55 }
+            ]
+          }
+        ],
+        "texture": {
+          "optional": true,
+          "description": "Very subtle noise/grain to prevent banding in gradients (2–4% opacity)."
+        }
+      },
+      "grid": {
+        "web": { "columns": 12, "gutterPx": 24, "outerMarginPx": 24, "maxWidthPx": 1440 },
+        "desktopComposition": {
+          "sidebarWidthPx": 260,
+          "rightRailWidthPx": 380,
+          "mainMinWidthPx": 720,
+          "gapsPx": 20
+        }
+      },
+      "responsive": {
+        "breakpointsPx": { "sm": 640, "md": 900, "lg": 1200, "xl": 1440 },
+        "rules": [
+          "Under md: collapse right rail into stacked sections below main content.",
+          "Under sm: sidebar becomes a bottom tab bar or a drawer; keep glass styling.",
+          "Hero stays first; keep primary CTA visible without scrolling where possible."
+        ]
+      }
+    }
+  },
+  "components": {
+    "foundations": {
+      "Surface": {
+        "description": "Base glass surface used by panels and cards.",
+        "variants": {
+          "panel": {
+            "background": "tokens.color.neutral.surface0",
+            "border": { "widthPx": 1, "color": "tokens.color.neutral.strokeSubtle" },
+            "radius": "tokens.radii.scalePx.2xl",
+            "shadow": "tokens.shadow.presets.panel",
+            "backdropBlurPx": "tokens.blur.backdropBlurPx.panel"
+          },
+          "card": {
+            "background": "tokens.color.neutral.surface1",
+            "border": { "widthPx": 1, "color": "tokens.color.neutral.strokeSubtle" },
+            "radius": "tokens.radii.scalePx.xl",
+            "shadow": "tokens.shadow.presets.card",
+            "backdropBlurPx": "tokens.blur.backdropBlurPx.card"
+          },
+          "control": {
+            "background": "rgba(255,255,255,0.06)",
+            "border": { "widthPx": 1, "color": "rgba(255,255,255,0.10)" },
+            "radius": "tokens.radii.scalePx.pill",
+            "shadow": "tokens.shadow.presets.control",
+            "backdropBlurPx": "tokens.blur.backdropBlurPx.control"
+          }
+        },
+        "states": {
+          "hover": {
+            "borderColor": "tokens.color.neutral.strokeStrong",
+            "backgroundLift": "rgba(255,255,255,0.02)"
+          },
+          "active": {
+            "borderColor": "tokens.color.neutral.strokeStrong",
+            "shadowAdd": { "preset": "tokens.shadow.presets.glowAccent", "when": "accented" }
+          }
+        }
+      }
+    },
+    "navigation": {
+      "Sidebar": {
+        "type": "App chrome",
+        "surfaceVariant": "Surface.panel",
+        "paddingPx": 16,
+        "sections": [
+          "Brand/Logo row",
+          "Primary nav list",
+          "Secondary nav list (optional)",
+          "Footer actions (settings, profile, etc.)"
+        ],
+        "navItem": {
+          "heightPx": 44,
+          "radiusPx": 14,
+          "iconSizePx": 20,
+          "gapPx": 12,
+          "textStyle": "tokens.typography.usage.body",
+          "default": { "textColor": "tokens.color.text.secondary", "iconColor": "tokens.color.text.secondary" },
+          "hover": { "background": "rgba(255,255,255,0.05)", "textColor": "tokens.color.text.primary" },
+          "active": {
+            "background": "rgba(255,255,255,0.07)",
+            "border": { "widthPx": 1, "color": "rgba(255,255,255,0.10)" },
+            "textColor": "tokens.color.text.primary",
+            "leftAccent": { "widthPx": 3, "color": "tokens.color.accent.primary", "radiusPx": 3 }
+          }
+        }
+      },
+      "TopBar": {
+        "type": "App chrome",
+        "heightPx": 64,
+        "layout": "Left page title + center/left search + right actions (chips/buttons).",
+        "title": { "style": "tokens.typography.usage.title" },
+        "actions": {
+          "iconButton": {
+            "surfaceVariant": "Surface.control",
+            "sizePx": 40,
+            "iconSizePx": 18
+          },
+          "primaryActionButton": "Button.Primary"
+        }
+      },
+      "Breadcrumbs": {
+        "style": "Muted, small, optional; not prominent in this aesthetic.",
+        "separator": "Chevron, opacity 0.5"
+      }
+    },
+    "controls": {
+      "Button": {
+        "shape": "Pill",
+        "heightPx": { "sm": 36, "md": 40, "lg": 48 },
+        "paddingX": { "sm": 14, "md": 18, "lg": 22 },
+        "textStyle": "tokens.typography.usage.label",
+        "variants": {
+          "Primary": {
+            "background": "rgba(255,255,255,0.92)",
+            "textColor": "tokens.color.text.inverse",
+            "shadow": "tokens.shadow.presets.control",
+            "hover": { "background": "rgba(255,255,255,1.0)" },
+            "pressed": { "translateYpx": 1, "background": "rgba(255,255,255,0.88)" }
+          },
+          "Secondary": {
+            "surfaceVariant": "Surface.control",
+            "textColor": "tokens.color.text.primary",
+            "hover": { "background": "rgba(255,255,255,0.08)" },
+            "pressed": { "translateYpx": 1 }
+          },
+          "Ghost": {
+            "background": "transparent",
+            "border": { "widthPx": 1, "color": "rgba(255,255,255,0.10)" },
+            "textColor": "tokens.color.text.secondary",
+            "hover": { "background": "rgba(255,255,255,0.05)", "textColor": "tokens.color.text.primary" }
+          },
+          "Accent": {
+            "background": "tokens.color.accent.primarySoft",
+            "border": { "widthPx": 1, "color": "rgba(139,92,246,0.35)" },
+            "textColor": "tokens.color.text.primary",
+            "shadowAdd": "tokens.shadow.presets.glowAccent"
+          }
+        },
+        "disabled": {
+          "opacity": 0.45,
+          "cursor": "not-allowed"
+        },
+        "focus": {
+          "outline": { "widthPx": 1, "color": "tokens.color.accent.primaryGlow" },
+          "shadowAdd": "tokens.shadow.presets.glowAccent"
+        }
+      },
+      "IconButton": {
+        "shape": "Pill or Circle",
+        "surfaceVariant": "Surface.control",
+        "sizesPx": { "sm": 36, "md": 40, "lg": 44 },
+        "states": "Match Button focus/hover philosophy"
+      },
+      "Input": {
+        "shape": "Pill",
+        "heightPx": 44,
+        "paddingX": 18,
+        "surfaceVariant": "Surface.control",
+        "placeholderColor": "tokens.color.text.tertiary",
+        "textColor": "tokens.color.text.primary",
+        "leftSlot": "Search icon in a subtle chip or inline icon (opacity 0.7)",
+        "focus": {
+          "borderColor": "rgba(139,92,246,0.40)",
+          "shadowAdd": "tokens.shadow.presets.glowAccent"
+        }
+      },
+      "Select": {
+        "appearance": "Same as Input; caret is subtle; menu is a glass card.",
+        "menu": {
+          "surfaceVariant": "Surface.card",
+          "itemHeightPx": 40,
+          "radiusPx": 18
+        }
+      },
+      "Tabs": {
+        "type": "Pill segmented control",
+        "container": {
+          "surfaceVariant": "Surface.control",
+          "paddingPx": 6,
+          "radiusPx": 999
+        },
+        "tab": {
+          "heightPx": 36,
+          "paddingX": 16,
+          "radiusPx": 999,
+          "textStyle": "tokens.typography.usage.label",
+          "default": { "textColor": "tokens.color.text.secondary" },
+          "active": {
+            "background": "rgba(255,255,255,0.10)",
+            "textColor": "tokens.color.text.primary",
+            "border": { "widthPx": 1, "color": "rgba(255,255,255,0.10)" }
+          }
+        }
+      },
+      "Chip": {
+        "type": "Small pill label",
+        "heightPx": 28,
+        "paddingX": 12,
+        "radiusPx": 999,
+        "textStyle": "tokens.typography.usage.label",
+        "variants": {
+          "Neutral": { "background": "rgba(255,255,255,0.06)", "textColor": "tokens.color.text.secondary" },
+          "Accent": { "background": "tokens.color.accent.primarySoft", "textColor": "tokens.color.text.primary" },
+          "Success": { "background": "rgba(52,211,153,0.18)", "textColor": "tokens.color.text.primary" }
+        }
+      },
+      "Badge": {
+        "type": "Tiny capsule / status pill",
+        "heightPx": 22,
+        "paddingX": 10,
+        "textStyle": "tokens.typography.usage.meta",
+        "background": "rgba(255,255,255,0.06)"
+      },
+      "Toggle": {
+        "style": "Minimal; glass track + soft thumb. Accent when on."
+      }
+    },
+    "content": {
+      "HeroPanel": {
+        "purpose": "Primary feature callout; largest surface on screen.",
+        "surfaceVariant": "Surface.panel",
+        "radiusPx": 32,
+        "minHeightPx": 360,
+        "background": {
+          "base": "tokens.color.neutral.surface0",
+          "overlayGradient": "tokens.color.accent.gradientHero",
+          "vignette": "rgba(0,0,0,0.20) at edges to focus center"
+        },
+        "layout": {
+          "topRightMetaChip": "Timer/status pill inside the hero (Surface.control).",
+          "center": "Large headline + optional stepped pill navigation.",
+          "primaryCTA": "High contrast pill button (Button.Primary)."
+        },
+        "typography": {
+          "headline": "tokens.typography.usage.displayHero",
+          "subcopy": { "style": "tokens.typography.usage.body", "color": "tokens.color.text.tertiary" }
+        }
+      },
+      "Card": {
+        "base": {
+          "surfaceVariant": "Surface.card",
+          "paddingPx": 20,
+          "radiusPx": 24
+        },
+        "headerRow": {
+          "title": "tokens.typography.usage.cardTitle",
+          "rightAction": "Small pill button or icon button"
+        },
+        "denseVariant": {
+          "paddingPx": 16,
+          "radiusPx": 22
+        }
+      },
+      "StatRowCard": {
+        "purpose": "Right rail stacked metrics with actions (e.g., APY + 'Stake Now').",
+        "layout": "Left icon + title; large numeric metric; right aligned CTA.",
+        "metric": {
+          "style": { "font": "mono", "sizePx": 34, "weight": 600 },
+          "suffix": "Muted label (e.g., APY) with secondary color"
+        },
+        "cta": "Button.Secondary (compact) with pill shape"
+      },
+      "InfoPanel": {
+        "purpose": "Secondary information block (readme/details) with rows of metadata.",
+        "rows": {
+          "label": "tokens.typography.usage.meta",
+          "value": "tokens.typography.usage.body",
+          "separator": "tokens.color.neutral.divider"
+        }
+      },
+      "TableCard": {
+        "purpose": "Leaderboard style content; minimal gridlines.",
+        "table": {
+          "header": { "textStyle": "tokens.typography.usage.meta", "color": "tokens.color.text.tertiary" },
+          "rowHeightPx": 44,
+          "rowHover": { "background": "rgba(255,255,255,0.04)" },
+          "divider": "tokens.color.neutral.divider"
+        }
+      }
+    },
+    "feedback": {
+      "Toast": {
+        "surfaceVariant": "Surface.card",
+        "radiusPx": 18,
+        "icon": "Optional; outline style",
+        "durationMs": 3000
+      },
+      "Tooltip": {
+        "surfaceVariant": "Surface.card",
+        "radiusPx": 14,
+        "paddingPx": 12,
+        "textStyle": "tokens.typography.usage.label"
+      },
+      "Modal": {
+        "backdrop": "rgba(0,0,0,0.55) with subtle blur",
+        "panel": { "surfaceVariant": "Surface.panel", "radiusPx": 28, "paddingPx": 24 }
+      },
+      "Skeleton": {
+        "style": "Subtle shimmer; low contrast. Respect radii of host component."
+      }
+    },
+    "dataViz": {
+      "Progress": {
+        "track": { "background": "rgba(255,255,255,0.06)", "radiusPx": 999, "heightPx": 10 },
+        "fill": { "background": "tokens.color.accent.primarySoft", "glow": "tokens.color.accent.primaryGlow" }
+      },
+      "Sparkline": {
+        "stroke": "rgba(244,246,255,0.65)",
+        "areaFill": "rgba(139,92,246,0.12)",
+        "grid": "rgba(255,255,255,0.06)"
+      }
+    }
+  },
+  "compositionPatterns": {
+    "rightRailStack": {
+      "pattern": "Stack cards with consistent gaps; maintain same radius family.",
+      "gapPx": 14,
+      "cardHeights": "Prefer 90–130px for quick scan; avoid tall blocks."
+    },
+    "heroThenDetails": {
+      "pattern": "Large hero surface, then a low-profile info panel below (readme/details).",
+      "spacing": "24px between hero and next content."
+    },
+    "primaryCTAPlacement": [
+      "Top right (Connect) as the global primary action.",
+      "Within hero: a single CTA button centered and prominent."
+    ]
+  },
+  "accessibility": {
+    "contrast": [
+      "Ensure primary text meets WCAG AA (prefer near-white on near-black).",
+      "Secondary text can be lower contrast, but keep it readable (avoid opacity < 0.45)."
+    ],
+    "focusVisible": [
+      "Use an accent glow focus ring + subtle border strengthen.",
+      "Never rely on color alone; add outline/shadow changes."
+    ],
+    "hitTargets": [
+      "Minimum 40x40px for icon buttons, 44px tall for primary inputs.",
+      "Nav items 44–48px tall."
+    ]
+  },
+  "implementationNotes": {
+    "tamagui": {
+      "configFile": "tamagui.config.ts",
+      "themeFiles": [
+        "packages/ui/src/theme/auro-tokens.ts",
+        "packages/ui/src/theme/auro-themes.ts"
+      ],
+      "mappingGuidance": [
+        "Use `Theme` tokens for `bg`, `color`, `borderColor`, `shadowColor` and create a glass surface component wrapper.",
+        "Centralize `radii`, `space`, and `font` scales; avoid per-component ad-hoc numbers.",
+        "Use `backdropFilter` on web and slightly higher `opacity` on native fallback surfaces."
+      ],
+      "recommendedAbstractions": [
+        "`GlassPanel` (panel surface)",
+        "`GlassCard` (card surface)",
+        "`GlassPill` (control surface)",
+        "`PrimaryPillButton` + `SecondaryPillButton`",
+        "`SidebarNavItem`"
+      ]
+    }
+  }
+}
+
+
