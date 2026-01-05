@@ -422,6 +422,35 @@
         "focus": {
           "borderColor": "rgba(139,92,246,0.40)",
           "shadowAdd": "tokens.shadow.presets.glowAccent"
+        },
+        "passwordVisibilityToggle": {
+          "description": "Eye icon button for toggling password visibility in password input fields",
+          "position": "Absolute, right side of input field",
+          "iconSizePx": 20,
+          "rightOffsetPx": 12,
+          "iconColor": {
+            "default": "text-gray-700",
+            "hover": "text-gray-900",
+            "rationale": "Dark color ensures visibility against white input backgrounds when focused or filled"
+          },
+          "icons": {
+            "hidden": "Eye icon (outline, stroke 2px)",
+            "visible": "Eye-slash icon (outline, stroke 2px)"
+          },
+          "accessibility": {
+            "ariaLabel": "Toggle between 'Show password' and 'Hide password' based on current state",
+            "buttonType": "button (prevents form submission)"
+          },
+          "behavior": {
+            "toggleType": "Switches input type between 'password' and 'text'",
+            "stateManagement": "Component-level state controls visibility",
+            "disabledState": "Respects input disabled state (opacity 50%)"
+          },
+          "styling": {
+            "container": "Relative positioning on input wrapper",
+            "inputPadding": "Add pr-10 (40px right padding) to prevent text overlap with icon",
+            "transition": "Smooth color transition on hover (transition-colors)"
+          }
         }
       },
       "Select": {
