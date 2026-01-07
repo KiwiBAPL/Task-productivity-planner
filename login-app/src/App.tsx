@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
-import { getSession, needsProfileSetup } from './lib/auth'
+import ClarityWizardHome from './components/clarity-wizard/ClarityWizardHome'
+import PastJourneyView from './components/clarity-wizard/PastJourneyView'
+import DefinePeriodStep from './components/clarity-wizard/DefinePeriodStep'
+import { getCurrentUser, needsProfileSetup } from './lib/auth'
 import { supabase } from './lib/supabase'
 
 function App() {
@@ -11,8 +14,8 @@ function App() {
 
   useEffect(() => {
     async function checkAuth() {
-      const session = await getSession()
-      if (session) {
+      const user = await getCurrentUser()
+      if (user) {
         setIsAuthenticated(true)
         const setupNeeded = await needsProfileSetup()
         setNeedsSetup(setupNeeded)
@@ -24,7 +27,7 @@ function App() {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, session: any) => {
+      async (_event: string, session: any) => {
         if (session) {
           setIsAuthenticated(true)
           const setupNeeded = await needsProfileSetup()
@@ -73,6 +76,64 @@ function App() {
             )
           }
         />
+        <Route
+          path="/clarity-wizard"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <ClarityWizardHome />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/new/period"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <DefinePeriodStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/view"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <PastJourneyView />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/tools"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <div className="relative w-full min-h-screen overflow-hidden">
+                <div className="absolute inset-0 bg-auro-bg0">
+                  <div className="absolute inset-0 gradient-radial-top-left" />
+                  <div className="absolute inset-0 gradient-radial-mid-left" />
+                </div>
+                <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
+                  <div className="glass-panel p-8 rounded-3xl text-center">
+                    <h2 className="text-xl font-semibold text-auro-text-primary mb-2">Tool Selection Step</h2>
+                    <p className="text-auro-text-secondary">Coming soon in Step 5</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        {/* Additional routes will be added as components are created:
+            - /clarity-wizard/:journeyId/wheel-of-life
+            - /clarity-wizard/:journeyId/swot
+            - /clarity-wizard/:journeyId/vision-board
+            - /clarity-wizard/:journeyId/big-5
+            - /clarity-wizard/:journeyId/summary
+        */}
       </Routes>
     </BrowserRouter>
   )

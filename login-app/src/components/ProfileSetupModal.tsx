@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { updateProfile, type AvatarData } from '../lib/auth'
 import { AvatarIcon, type AvatarPreset } from './avatars/PresetAvatars'
 import AvatarSelectionModal from './AvatarSelectionModal'
@@ -10,7 +9,6 @@ interface ProfileSetupModalProps {
 }
 
 function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps) {
-  const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [selectedPreset, setSelectedPreset] = useState<AvatarPreset | null>(null)

@@ -185,28 +185,72 @@ export async function signOut(): Promise<AuthResult> {
  * Get the current user session
  */
 export async function getSession() {
-  const { data, error } = await supabase.auth.getSession()
-  
-  if (error) {
-    console.error('Error getting session:', error)
+  console.log('getSession: calling supabase.auth.getSession()')
+  try {
+    // Add timeout to prevent infinite hanging
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const sessionPromise = supabase.auth.getSession()
+    const timeoutPromise = new Promise<{ data: { session: null }, error: null }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        console.warn('getSession: timeout after 5 seconds')
+        resolve({ data: { session: null }, error: null })
+      }, 5000)
+    })
+    
+    const result = await Promise.race([sessionPromise, timeoutPromise])
+
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+    console.log('getSession: supabase.auth.getSession() completed', { hasSession: !!result.data?.session, error: result.error })
+    
+    if (result.error) {
+      console.error('Error getting session:', result.error)
+      return null
+    }
+    
+    return result.data?.session || null
+  } catch (err) {
+    console.error('Exception in getSession:', err)
     return null
   }
-  
-  return data.session
 }
 
 /**
  * Get the current user
  */
 export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser()
-  
-  if (error) {
-    console.error('Error getting user:', error)
+  console.log('getCurrentUser: calling supabase.auth.getUser()')
+  try {
+    // Prevent hanging requests that block UI loading
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const getUserPromise = supabase.auth.getUser()
+    const timeoutPromise = new Promise<{ data: { user: null }; error: { message: string; code: string } }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        console.warn('getCurrentUser: timeout after 5 seconds')
+        resolve({ data: { user: null }, error: { message: 'Timeout', code: 'TIMEOUT' } })
+      }, 5000)
+    })
+
+    const { data, error } = await Promise.race([getUserPromise, timeoutPromise])
+
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+    console.log('getCurrentUser: supabase.auth.getUser() completed', { data: data?.user?.id, error })
+    
+    if (error) {
+      console.error('Error getting user:', error)
+      return null
+    }
+    
+    return data.user
+  } catch (err) {
+    console.error('Exception in getCurrentUser:', err)
     return null
   }
-  
-  return data.user
 }
 
 /**
