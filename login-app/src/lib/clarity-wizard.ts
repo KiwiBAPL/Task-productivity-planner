@@ -7,9 +7,15 @@ export interface ClarityJourney {
   name: string | null
   period_start: string
   period_end: string
+  cover_image_url: string | null
   tools_wheel_of_life: boolean
   tools_swot: boolean
   tools_vision_board: boolean
+  tools_done: boolean
+  wheel_done: boolean
+  swot_done: boolean
+  vision_done: boolean
+  big5_done: boolean
   status: 'draft' | 'completed' | 'archived'
   created_at: string
   updated_at: string
@@ -268,7 +274,7 @@ export async function createJourney(
  */
 export async function updateJourney(
   journeyId: string,
-  updates: Partial<Pick<ClarityJourney, 'name' | 'period_start' | 'period_end' | 'tools_wheel_of_life' | 'tools_swot' | 'tools_vision_board' | 'status'>>
+  updates: Partial<Pick<ClarityJourney, 'name' | 'period_start' | 'period_end' | 'cover_image_url' | 'tools_wheel_of_life' | 'tools_swot' | 'tools_vision_board' | 'tools_done' | 'wheel_done' | 'swot_done' | 'vision_done' | 'big5_done' | 'status'>>
 ): Promise<JourneyResult> {
   try {
     const user = await getCurrentUser()
@@ -340,5 +346,107 @@ export function calculateMonths(startDate: string, endDate: string): number {
   // Inclusive month count: Jan 1 to Dec 31 => 12 months, Jan 1 to Jan 1 => 1 month
   const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
   return Math.max(1, months)
+}
+
+/**
+ * Get the next step in the journey based on completion flags
+ * Order: Tools → Wheel → SWOT → Vision → Big 5 → Summary
+ */
+export function getNextStep(journey: ClarityJourney): string {
+  const { id, tools_done, wheel_done, swot_done, vision_done, big5_done, status } = journey
+  
+  // If journey is completed, go to summary
+  if (status === 'completed' || status === 'archived') {
+    return `/clarity-wizard/${id}/summary`
+  }
+  
+  // Follow the fixed order
+  if (!tools_done) {
+    return `/clarity-wizard/${id}/tools`
+  }
+  
+  if (journey.tools_wheel_of_life && !wheel_done) {
+    return `/clarity-wizard/${id}/wheel-of-life`
+  }
+  
+  if (journey.tools_swot && !swot_done) {
+    return `/clarity-wizard/${id}/swot`
+  }
+  
+  if (journey.tools_vision_board && !vision_done) {
+    return `/clarity-wizard/${id}/vision-board`
+  }
+  
+  if (!big5_done) {
+    return `/clarity-wizard/${id}/big-5`
+  }
+  
+  // All steps complete, go to summary
+  return `/clarity-wizard/${id}/summary`
+}
+
+/**
+ * Get the name of the next step for display purposes
+ */
+export function getNextStepName(journey: ClarityJourney): string {
+  const { tools_done, wheel_done, swot_done, vision_done, big5_done, status } = journey
+  
+  if (status === 'completed' || status === 'archived') {
+    return 'Summary'
+  }
+  
+  if (!tools_done) {
+    return 'Tool Selection'
+  }
+  
+  if (journey.tools_wheel_of_life && !wheel_done) {
+    return 'Wheel of Life'
+  }
+  
+  if (journey.tools_swot && !swot_done) {
+    return 'SWOT Analysis'
+  }
+  
+  if (journey.tools_vision_board && !vision_done) {
+    return 'Vision Board'
+  }
+  
+  if (!big5_done) {
+    return 'Big 5 & OKRs'
+  }
+  
+  return 'Summary'
+}
+
+/**
+ * Mark a step as complete
+ * For Big 5, this also sets the journey status to 'completed'
+ */
+export async function markStepComplete(
+  journeyId: string,
+  step: 'tools' | 'wheel' | 'swot' | 'vision' | 'big5'
+): Promise<JourneyResult> {
+  const updates: Partial<Pick<ClarityJourney, 'tools_done' | 'wheel_done' | 'swot_done' | 'vision_done' | 'big5_done' | 'status'>> = {}
+  
+  switch (step) {
+    case 'tools':
+      updates.tools_done = true
+      break
+    case 'wheel':
+      updates.wheel_done = true
+      break
+    case 'swot':
+      updates.swot_done = true
+      break
+    case 'vision':
+      updates.vision_done = true
+      break
+    case 'big5':
+      updates.big5_done = true
+      updates.status = 'completed'
+      break
+  }
+  
+  return updateJourney(journeyId, updates)
 }
 

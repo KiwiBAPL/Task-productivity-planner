@@ -223,9 +223,16 @@ export default function ClarityWizardHome() {
                 Current Journey
               </h2>
               <div className="glass-card p-4 rounded-xl mb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-start gap-4">
+                  {activeJourney.cover_image_url && (
+                    <img
+                      src={activeJourney.cover_image_url}
+                      alt={activeJourney.name || 'Journey cover'}
+                      className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="text-lg font-medium text-auro-text-primary">
                         {activeJourney.name || 'My Journey'}
                       </h3>
@@ -242,10 +249,10 @@ export default function ClarityWizardHome() {
               <div className="flex items-center gap-3 flex-wrap">
                 {activeJourney.status === 'draft' ? (
                   <Link
-                    to={`/clarity-wizard/${activeJourney.id}/tools`}
+                    to={`/clarity-wizard/${activeJourney.id}/period`}
                     className="px-6 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)]"
                   >
-                    Resume journey
+                    Update journey
                   </Link>
                 ) : (
                   <Link
@@ -278,9 +285,16 @@ export default function ClarityWizardHome() {
                     key={journey.id}
                     className="glass-card p-4 rounded-xl hover:border-auro-stroke-strong transition-all"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-start gap-4">
+                      {journey.cover_image_url && (
+                        <img
+                          src={journey.cover_image_url}
+                          alt={journey.name || 'Journey cover'}
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <h3 className="text-base font-medium text-auro-text-primary">
                             {journey.name || 'My Journey'}
                           </h3>
@@ -295,7 +309,7 @@ export default function ClarityWizardHome() {
                       </div>
                       <Link
                         to={`/clarity-wizard/${journey.id}/view`}
-                        className="px-4 py-2 rounded-full glass-control text-auro-text-primary hover:bg-white/8 transition-all text-sm font-medium"
+                        className="px-4 py-2 rounded-full glass-control text-auro-text-primary hover:bg-white/8 transition-all text-sm font-medium flex-shrink-0"
                       >
                         View details
                       </Link>

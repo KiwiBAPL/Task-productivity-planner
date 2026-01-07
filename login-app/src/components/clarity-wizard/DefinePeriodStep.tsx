@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAutosave } from '../../hooks/useAutosave'
-import { createJourney, updateJourney, getActiveJourney, type ClarityJourney } from '../../lib/clarity-wizard'
+import { createJourney, updateJourney, getActiveJourney, getJourneyById, getNextStep, getNextStepName, type ClarityJourney } from '../../lib/clarity-wizard'
+import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/auth'
 
 interface PeriodData {
   name: string
@@ -36,6 +38,7 @@ function calculateMonthsDiff(start: Date, end: Date): number {
 
 export default function DefinePeriodStep() {
   const navigate = useNavigate()
+  const { journeyId: urlJourneyId } = useParams<{ journeyId?: string }>()
   
   // Initialize with today and 12 months from now
   const today = useMemo(() => new Date(), [])
@@ -49,27 +52,53 @@ export default function DefinePeriodStep() {
   
   // Journey state
   const [journeyId, setJourneyId] = useState<string | null>(null)
+  const [journey, setJourney] = useState<ClarityJourney | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // Image state
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [imageError, setImageError] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
   // Validation state
   const [validationError, setValidationError] = useState<string>('')
 
-  // Check for existing draft journey on mount
+  // Check for existing journey on mount
   useEffect(() => {
     async function loadExistingJourney() {
       setIsLoading(true)
       try {
-        const result = await getActiveJourney()
-        if (result.success && result.data) {
-          const journey = result.data as ClarityJourney
-          if (journey.status === 'draft') {
-            // Resume existing draft
-            setJourneyId(journey.id)
-            setName(journey.name || '')
-            setPeriodStart(journey.period_start)
-            setPeriodEnd(journey.period_end)
+        // If journeyId is in URL, load that specific journey
+        if (urlJourneyId) {
+          const result = await getJourneyById(urlJourneyId)
+          if (result.success && result.data) {
+            const loadedJourney = result.data as ClarityJourney
+            setJourney(loadedJourney)
+            setJourneyId(loadedJourney.id)
+            setName(loadedJourney.name || '')
+            setPeriodStart(loadedJourney.period_start)
+            setPeriodEnd(loadedJourney.period_end)
+            setCoverImageUrl(loadedJourney.cover_image_url || null)
+            setImagePreview(loadedJourney.cover_image_url || null)
+          }
+        } else {
+          // Otherwise, check for active draft
+          const result = await getActiveJourney()
+          if (result.success && result.data) {
+            const loadedJourney = result.data as ClarityJourney
+            if (loadedJourney.status === 'draft') {
+              setJourney(loadedJourney)
+              setJourneyId(loadedJourney.id)
+              setName(loadedJourney.name || '')
+              setPeriodStart(loadedJourney.period_start)
+              setPeriodEnd(loadedJourney.period_end)
+              setCoverImageUrl(loadedJourney.cover_image_url || null)
+              setImagePreview(loadedJourney.cover_image_url || null)
+            }
           }
         }
       } catch (err) {
@@ -79,7 +108,7 @@ export default function DefinePeriodStep() {
       }
     }
     loadExistingJourney()
-  }, [])
+  }, [urlJourneyId])
 
   // Validate dates
   useEffect(() => {
@@ -147,6 +176,100 @@ export default function DefinePeriodStep() {
     return null
   }
 
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      setImageError('Please select a valid image file (JPEG, PNG, GIF, or WebP)')
+      return
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setImageError('Image must be smaller than 5MB')
+      return
+    }
+
+    setImageError('')
+    setIsUploadingImage(true)
+
+    try {
+      const user = await getCurrentUser()
+      if (!user) {
+        setImageError('User not authenticated')
+        return
+      }
+
+      // Show preview immediately
+      const previewUrl = URL.createObjectURL(file)
+      setImagePreview(previewUrl)
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `${user.id}/${journeyId || 'temp'}/${fileName}`
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('journey-covers')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`)
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('journey-covers')
+        .getPublicUrl(filePath)
+
+      const publicUrl = urlData.publicUrl
+      setCoverImageUrl(publicUrl)
+
+      // If we have a journey ID, update it immediately
+      if (journeyId) {
+        const result = await updateJourney(journeyId, {
+          cover_image_url: publicUrl,
+        })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save image URL')
+        }
+      }
+    } catch (err) {
+      console.error('Image upload error:', err)
+      setImageError(err instanceof Error ? err.message : 'Failed to upload image')
+      setImagePreview(coverImageUrl) // Revert to previous image
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  function handleRemoveImage() {
+    setImagePreview(null)
+    setCoverImageUrl(null)
+    setImageError('')
+    
+    // Update journey to remove image
+    if (journeyId) {
+      updateJourney(journeyId, {
+        cover_image_url: null,
+      })
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   async function handleContinue() {
     if (validationError) return
     
@@ -155,7 +278,7 @@ export default function DefinePeriodStep() {
     
     try {
       if (journeyId) {
-        // Update existing journey and navigate
+        // Update existing journey and navigate to next step
         const result = await updateJourney(journeyId, {
           name: name || null,
           period_start: periodStart,
@@ -167,9 +290,11 @@ export default function DefinePeriodStep() {
           return
         }
         
-        navigate(`/clarity-wizard/${journeyId}/tools`)
+        const updatedJourney = result.data as ClarityJourney
+        const nextRoute = getNextStep(updatedJourney)
+        navigate(nextRoute)
       } else {
-        // Create new journey
+        // Create new journey and navigate to next step
         const result = await createJourney(periodStart, periodEnd, name || undefined)
         
         if (!result.success) {
@@ -177,8 +302,17 @@ export default function DefinePeriodStep() {
           return
         }
         
-        const journey = result.data as ClarityJourney
-        navigate(`/clarity-wizard/${journey.id}/tools`)
+        const newJourney = result.data as ClarityJourney
+        
+        // If we have a cover image, update the journey with it
+        if (coverImageUrl) {
+          await updateJourney(newJourney.id, {
+            cover_image_url: coverImageUrl,
+          })
+        }
+        
+        const nextRoute = getNextStep(newJourney)
+        navigate(nextRoute)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
@@ -261,6 +395,83 @@ export default function DefinePeriodStep() {
                 placeholder="e.g., 2026 Growth Plan, Q1-Q2 Focus..."
                 className="w-full input-field rounded-xl"
               />
+            </div>
+
+            {/* Cover image (optional) */}
+            <div>
+              <label className="block text-sm font-medium text-auro-text-secondary mb-2">
+                Cover image <span className="text-auro-text-tertiary">(optional)</span>
+              </label>
+              <div className="space-y-3">
+                {imagePreview ? (
+                  <div className="relative glass-card p-3 rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={imagePreview}
+                        alt="Journey cover"
+                        className="w-24 h-24 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm text-auro-text-primary font-medium mb-1">
+                          Cover image uploaded
+                        </p>
+                        <p className="text-xs text-auro-text-tertiary">
+                          This image will appear on your journey card
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        disabled={isUploadingImage}
+                        className="px-4 py-2 rounded-lg glass-control text-auro-text-secondary hover:text-auro-danger hover:bg-auro-danger/10 transition-colors text-sm disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImage}
+                      className="hidden"
+                      id="cover-image-input"
+                    />
+                    <label
+                      htmlFor="cover-image-input"
+                      className={`
+                        block glass-card p-6 rounded-xl border-2 border-dashed border-auro-stroke-subtle
+                        hover:border-auro-accent hover:bg-auro-accent/5 transition-all cursor-pointer
+                        ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''}
+                      `}
+                    >
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <svg className="w-12 h-12 text-auro-text-tertiary mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        {isUploadingImage ? (
+                          <p className="text-sm text-auro-text-secondary">Uploading...</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-auro-text-primary font-medium mb-1">
+                              Click to upload an image
+                            </p>
+                            <p className="text-xs text-auro-text-tertiary">
+                              JPEG, PNG, GIF, or WebP (max 5MB)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                )}
+                {imageError && (
+                  <p className="text-sm text-auro-danger">{imageError}</p>
+                )}
+              </div>
             </div>
 
             {/* Preset duration buttons */}
@@ -348,13 +559,20 @@ export default function DefinePeriodStep() {
             >
               Cancel
             </button>
-            <button
-              onClick={handleContinue}
-              disabled={isSubmitting || !!validationError}
-              className="px-8 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Creating...' : 'Continue'}
-            </button>
+            <div className="flex items-center gap-4">
+              {journey && (
+                <span className="text-sm text-auro-text-secondary">
+                  Next: {getNextStepName(journey)}
+                </span>
+              )}
+              <button
+                onClick={handleContinue}
+                disabled={isSubmitting || !!validationError}
+                className="px-8 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (journeyId ? 'Saving...' : 'Creating...') : 'Continue'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
