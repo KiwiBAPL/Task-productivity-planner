@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getCurrentUser, updateProfile, type AvatarData } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { AvatarIcon, type AvatarPreset } from './avatars/PresetAvatars'
@@ -17,6 +18,7 @@ interface Task {
 }
 
 function Dashboard() {
+  const navigate = useNavigate()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('Dashboard')
@@ -224,7 +226,21 @@ function Dashboard() {
           {/* Navigation Icons */}
           <div className="space-y-1 mb-4">
             {[
-              { icon: 'home', label: 'Home' },
+              { 
+                icon: 'home', 
+                label: 'Home',
+                route: '/dashboard'
+              },
+              { 
+                icon: 'sparkles', 
+                label: 'Clarity Wizard',
+                route: '/clarity-wizard',
+                svg: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                )
+              },
               { icon: 'bell', label: 'Notifications' },
               { icon: 'chat', label: 'Chat' },
               { icon: 'folder', label: 'Files', badge: 2 },
@@ -237,11 +253,13 @@ function Dashboard() {
             ].map((item) => (
               <button
                 key={item.icon}
+                onClick={() => item.route && navigate(item.route)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-auro-text-secondary hover:bg-white/5 hover:text-auro-text-primary transition-all"
               >
                 <div className="w-5 h-5 flex items-center justify-center">
-                  {/* Icon placeholder */}
-                  <div className="w-4 h-4 rounded border border-auro-stroke-subtle" />
+                  {item.svg || (
+                    <div className="w-4 h-4 rounded border border-auro-stroke-subtle" />
+                  )}
                 </div>
                 <span className="flex-1 text-left">{item.label}</span>
                 {item.badge && (

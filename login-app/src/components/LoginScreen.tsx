@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SignUpModal from './SignUpModal'
 import ProfileSetupModal from './ProfileSetupModal'
-import { signIn, needsProfileSetup, getSession } from '../lib/auth'
+import { signIn, needsProfileSetup, getCurrentUser } from '../lib/auth'
 
 function LoginScreen() {
   const navigate = useNavigate()
@@ -17,8 +17,8 @@ function LoginScreen() {
   // Check if user is already logged in and needs profile setup
   useEffect(() => {
     async function checkProfileSetup() {
-      const session = await getSession()
-      if (session) {
+      const user = await getCurrentUser()
+      if (user) {
         const needsSetup = await needsProfileSetup()
         if (needsSetup) {
           setIsProfileSetupModalOpen(true)
