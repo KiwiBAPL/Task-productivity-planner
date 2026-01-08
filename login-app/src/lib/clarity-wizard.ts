@@ -8,10 +8,6 @@ export interface ClarityJourney {
   period_start: string
   period_end: string
   cover_image_url: string | null
-  tools_wheel_of_life: boolean
-  tools_swot: boolean
-  tools_vision_board: boolean
-  tools_done: boolean
   wheel_done: boolean
   swot_done: boolean
   vision_done: boolean
@@ -274,7 +270,7 @@ export async function createJourney(
  */
 export async function updateJourney(
   journeyId: string,
-  updates: Partial<Pick<ClarityJourney, 'name' | 'period_start' | 'period_end' | 'cover_image_url' | 'tools_wheel_of_life' | 'tools_swot' | 'tools_vision_board' | 'tools_done' | 'wheel_done' | 'swot_done' | 'vision_done' | 'big5_done' | 'status'>>
+  updates: Partial<Pick<ClarityJourney, 'name' | 'period_start' | 'period_end' | 'cover_image_url' | 'wheel_done' | 'swot_done' | 'vision_done' | 'big5_done' | 'status'>>
 ): Promise<JourneyResult> {
   try {
     const user = await getCurrentUser()
@@ -349,104 +345,60 @@ export function calculateMonths(startDate: string, endDate: string): number {
 }
 
 /**
- * Get the next step in the journey based on completion flags
- * Order: Tools → Wheel → SWOT → Vision → Big 5 → Summary
+ * Get the next step in the journey - simple linear flow
+ * Flow: Period → Tools → Wheel of Life → SWOT → Vision Board → Big 5 → Summary
  */
-export function getNextStep(journey: ClarityJourney): string {
-  const { id, tools_done, wheel_done, swot_done, vision_done, big5_done, status } = journey
+export function getNextStep(journey: ClarityJourney, currentStep?: string): string {
+  const { id, status } = journey
   
-  // If journey is completed, go to summary
+  // If journey is completed/archived, go to summary
   if (status === 'completed' || status === 'archived') {
     return `/clarity-wizard/${id}/summary`
   }
   
-  // Follow the fixed order
-  if (!tools_done) {
-    return `/clarity-wizard/${id}/tools`
-  }
-  
-  if (journey.tools_wheel_of_life && !wheel_done) {
-    return `/clarity-wizard/${id}/wheel-of-life`
-  }
-  
-  if (journey.tools_swot && !swot_done) {
-    return `/clarity-wizard/${id}/swot`
-  }
-  
-  if (journey.tools_vision_board && !vision_done) {
-    return `/clarity-wizard/${id}/vision-board`
-  }
-  
-  if (!big5_done) {
-    return `/clarity-wizard/${id}/big-5`
-  }
-  
-  // All steps complete, go to summary
-  return `/clarity-wizard/${id}/summary`
-}
-
-/**
- * Get the name of the next step for display purposes
- */
-export function getNextStepName(journey: ClarityJourney): string {
-  const { tools_done, wheel_done, swot_done, vision_done, big5_done, status } = journey
-  
-  if (status === 'completed' || status === 'archived') {
-    return 'Summary'
-  }
-  
-  if (!tools_done) {
-    return 'Tool Selection'
-  }
-  
-  if (journey.tools_wheel_of_life && !wheel_done) {
-    return 'Wheel of Life'
-  }
-  
-  if (journey.tools_swot && !swot_done) {
-    return 'SWOT Analysis'
-  }
-  
-  if (journey.tools_vision_board && !vision_done) {
-    return 'Vision Board'
-  }
-  
-  if (!big5_done) {
-    return 'Big 5 & OKRs'
-  }
-  
-  return 'Summary'
-}
-
-/**
- * Mark a step as complete
- * For Big 5, this also sets the journey status to 'completed'
- */
-export async function markStepComplete(
-  journeyId: string,
-  step: 'tools' | 'wheel' | 'swot' | 'vision' | 'big5'
-): Promise<JourneyResult> {
-  const updates: Partial<Pick<ClarityJourney, 'tools_done' | 'wheel_done' | 'swot_done' | 'vision_done' | 'big5_done' | 'status'>> = {}
-  
-  switch (step) {
+  // Simple linear progression based on current step
+  switch (currentStep) {
+    case 'period':
+      return `/clarity-wizard/${id}/tools`
     case 'tools':
-      updates.tools_done = true
-      break
-    case 'wheel':
-      updates.wheel_done = true
-      break
+      return `/clarity-wizard/${id}/wheel-of-life`
+    case 'wheel-of-life':
+      return `/clarity-wizard/${id}/swot`
     case 'swot':
-      updates.swot_done = true
-      break
-    case 'vision':
-      updates.vision_done = true
-      break
-    case 'big5':
-      updates.big5_done = true
-      updates.status = 'completed'
-      break
+      return `/clarity-wizard/${id}/vision-board`
+    case 'vision-board':
+      return `/clarity-wizard/${id}/big-5`
+    case 'big-5':
+      return `/clarity-wizard/${id}/summary`
+    default:
+      // Default to tools if unknown step
+      return `/clarity-wizard/${id}/tools`
   }
-  
-  return updateJourney(journeyId, updates)
 }
+
+
+/**
+ * Get the previous step in the journey - simple linear flow
+ * Used for Back button navigation
+ */
+export function getPreviousStep(journey: ClarityJourney, currentStep: string): string {
+  const { id } = journey
+  
+  switch (currentStep) {
+    case 'tools':
+      return `/clarity-wizard/${id}/period`
+    case 'wheel-of-life':
+      return `/clarity-wizard/${id}/tools`
+    case 'swot':
+      return `/clarity-wizard/${id}/wheel-of-life`
+    case 'vision-board':
+      return `/clarity-wizard/${id}/swot`
+    case 'big-5':
+      return `/clarity-wizard/${id}/vision-board`
+    default:
+      return `/clarity-wizard/${id}/period`
+  }
+}
+
+
 

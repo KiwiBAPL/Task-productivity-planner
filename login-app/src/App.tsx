@@ -5,6 +5,11 @@ import Dashboard from './components/Dashboard'
 import ClarityWizardHome from './components/clarity-wizard/ClarityWizardHome'
 import PastJourneyView from './components/clarity-wizard/PastJourneyView'
 import DefinePeriodStep from './components/clarity-wizard/DefinePeriodStep'
+import ToolSelectionStep from './components/clarity-wizard/ToolSelectionStep'
+import WheelOfLifeStep from './components/clarity-wizard/WheelOfLifeStep'
+import SWOTStep from './components/clarity-wizard/SWOTStep'
+import VisionBoardStep from './components/clarity-wizard/VisionBoardStep'
+import Big5Step from './components/clarity-wizard/Big5Step'
 import { getCurrentUser, needsProfileSetup } from './lib/auth'
 import { supabase } from './lib/supabase'
 
@@ -97,6 +102,16 @@ function App() {
           }
         />
         <Route
+          path="/clarity-wizard/:journeyId/period"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <DefinePeriodStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
           path="/clarity-wizard/:journeyId/view"
           element={
             isAuthenticated && !needsSetup ? (
@@ -110,28 +125,53 @@ function App() {
           path="/clarity-wizard/:journeyId/tools"
           element={
             isAuthenticated && !needsSetup ? (
-              <div className="relative w-full min-h-screen overflow-hidden">
-                <div className="absolute inset-0 bg-auro-bg0">
-                  <div className="absolute inset-0 gradient-radial-top-left" />
-                  <div className="absolute inset-0 gradient-radial-mid-left" />
-                </div>
-                <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-                  <div className="glass-panel p-8 rounded-3xl text-center">
-                    <h2 className="text-xl font-semibold text-auro-text-primary mb-2">Tool Selection Step</h2>
-                    <p className="text-auro-text-secondary">Coming soon in Step 5</p>
-                  </div>
-                </div>
-              </div>
+              <ToolSelectionStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/wheel-of-life"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <WheelOfLifeStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/swot"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <SWOTStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/vision-board"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <VisionBoardStep />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/clarity-wizard/:journeyId/big-5"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <Big5Step />
             ) : (
               <Navigate to="/" replace />
             )
           }
         />
         {/* Additional routes will be added as components are created:
-            - /clarity-wizard/:journeyId/wheel-of-life
-            - /clarity-wizard/:journeyId/swot
-            - /clarity-wizard/:journeyId/vision-board
-            - /clarity-wizard/:journeyId/big-5
             - /clarity-wizard/:journeyId/summary
         */}
       </Routes>

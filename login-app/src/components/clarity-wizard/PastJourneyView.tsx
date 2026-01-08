@@ -69,22 +69,18 @@ export default function PastJourneyView() {
       const journeyData = journeyResult.data as ClarityJourney
       setJourney(journeyData)
 
-      // Load related data in parallel
+      // Load related data in parallel (all tools are part of the workflow)
       const [wheelResult, swotResult, big5Result, visionResult] = await Promise.all([
-        journeyData.tools_wheel_of_life
-          ? supabase
-              .from('wheel_of_life_areas')
-              .select('*')
-              .eq('journey_id', journeyId)
-              .order('created_at')
-          : Promise.resolve({ data: [], error: null }),
-        journeyData.tools_swot
-          ? supabase
-              .from('swot_entries')
-              .select('*')
-              .eq('journey_id', journeyId)
-              .order('created_at')
-          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('wheel_of_life_areas')
+          .select('*')
+          .eq('journey_id', journeyId)
+          .order('created_at'),
+        supabase
+          .from('swot_entries')
+          .select('*')
+          .eq('journey_id', journeyId)
+          .order('created_at'),
         supabase
           .from('big5_buckets')
           .select('*, big5_okrs(*)')
@@ -186,21 +182,15 @@ export default function PastJourneyView() {
 
             {/* Tools used indicators */}
             <div className="flex items-center gap-3 flex-wrap">
-              {journey.tools_wheel_of_life && (
-                <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
-                  Wheel of Life
-                </span>
-              )}
-              {journey.tools_swot && (
-                <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
-                  SWOT
-                </span>
-              )}
-              {journey.tools_vision_board && (
-                <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
-                  Vision Board
-                </span>
-              )}
+              <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
+                Wheel of Life
+              </span>
+              <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
+                SWOT
+              </span>
+              <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
+                Vision Board
+              </span>
               <span className="px-3 py-1 rounded-full bg-auro-accent-soft text-auro-text-primary text-xs font-medium border border-auro-accent/35">
                 Big 5 & OKRs
               </span>
@@ -208,7 +198,7 @@ export default function PastJourneyView() {
           </div>
 
           {/* Wheel of Life */}
-          {journey.tools_wheel_of_life && wheelOfLifeAreas.length > 0 && (
+          {wheelOfLifeAreas.length > 0 && (
             <div className="glass-panel p-6 rounded-3xl">
               <h2 className="text-xl font-semibold text-auro-text-primary mb-4">
                 Wheel of Life
@@ -234,7 +224,7 @@ export default function PastJourneyView() {
           )}
 
           {/* SWOT Analysis */}
-          {journey.tools_swot && swotEntries.length > 0 && (
+          {swotEntries.length > 0 && (
             <div className="glass-panel p-6 rounded-3xl">
               <h2 className="text-xl font-semibold text-auro-text-primary mb-4">
                 SWOT Analysis
@@ -269,7 +259,7 @@ export default function PastJourneyView() {
           )}
 
           {/* Vision Board */}
-          {journey.tools_vision_board && hasVisionBoard && (
+          {hasVisionBoard && (
             <div className="glass-panel p-6 rounded-3xl">
               <h2 className="text-xl font-semibold text-auro-text-primary mb-4">
                 Vision Board

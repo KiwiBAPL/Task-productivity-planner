@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAutosave } from '../../hooks/useAutosave'
-import { createJourney, updateJourney, getActiveJourney, getJourneyById, getNextStep, getNextStepName, type ClarityJourney } from '../../lib/clarity-wizard'
+import { createJourney, updateJourney, getActiveJourney, getJourneyById, getNextStep, type ClarityJourney } from '../../lib/clarity-wizard'
 import { supabase } from '../../lib/supabase'
 import { getCurrentUser } from '../../lib/auth'
 
@@ -52,7 +52,6 @@ export default function DefinePeriodStep() {
   
   // Journey state
   const [journeyId, setJourneyId] = useState<string | null>(null)
-  const [journey, setJourney] = useState<ClarityJourney | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -77,7 +76,7 @@ export default function DefinePeriodStep() {
           const result = await getJourneyById(urlJourneyId)
           if (result.success && result.data) {
             const loadedJourney = result.data as ClarityJourney
-            setJourney(loadedJourney)
+            console.log('📦 [DefinePeriodStep] Journey loaded from database:', loadedJourney.id)
             setJourneyId(loadedJourney.id)
             setName(loadedJourney.name || '')
             setPeriodStart(loadedJourney.period_start)
@@ -90,8 +89,8 @@ export default function DefinePeriodStep() {
           const result = await getActiveJourney()
           if (result.success && result.data) {
             const loadedJourney = result.data as ClarityJourney
+            console.log('📦 [DefinePeriodStep] Active journey loaded from database:', loadedJourney.id)
             if (loadedJourney.status === 'draft') {
-              setJourney(loadedJourney)
               setJourneyId(loadedJourney.id)
               setName(loadedJourney.name || '')
               setPeriodStart(loadedJourney.period_start)
@@ -560,11 +559,6 @@ export default function DefinePeriodStep() {
               Cancel
             </button>
             <div className="flex items-center gap-4">
-              {journey && (
-                <span className="text-sm text-auro-text-secondary">
-                  Next: {getNextStepName(journey)}
-                </span>
-              )}
               <button
                 onClick={handleContinue}
                 disabled={isSubmitting || !!validationError}

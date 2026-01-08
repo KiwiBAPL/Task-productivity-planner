@@ -2,18 +2,19 @@
 
 **Purpose:** This document serves as a complete reference for implementing the Clarity Wizard feature incrementally. Each step should be built by a separate agent, referencing this guide.
 
-**Last Updated:** 2026-01-05
+**Last Updated:** 2026-01-08 - Updated with download functionality and top navigation buttons
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Architecture & Technical Stack](#architecture--technical-stack)
-3. [Database Schema](#database-schema)
-4. [Incremental Implementation Steps](#incremental-implementation-steps)
-5. [Design System Integration](#design-system-integration)
-6. [Reference Files](#reference-files)
+2. [Implementation Status](#implementation-status)
+3. [Architecture & Technical Stack](#architecture--technical-stack)
+4. [Database Schema](#database-schema)
+5. [Incremental Implementation Steps](#incremental-implementation-steps)
+6. [Design System Integration](#design-system-integration)
+7. [Reference Files](#reference-files)
 
 ---
 
@@ -21,26 +22,112 @@
 
 The Clarity Wizard is a multi-step guided journey that helps users:
 1. Define a focus period (3-24 months)
-2. Choose optional tools (Wheel of Life, SWOT, Vision Board)
-3. Complete exercises to inform their Big 5 outcomes
+2. View an overview of the journey tools
+3. Complete all exercises to inform their Big 5 outcomes
 4. Define 5 outcome buckets with OKRs
 5. Review and commit their journey
 
 **Key Features:**
+- **Linear workflow:** All users complete all tools in fixed order
 - **Autosave:** All work is automatically saved (300-500ms debounce)
 - **Multi-day workflow:** Users can complete over multiple sessions
 - **Draft/Completed states:** Journeys can be resumed or edited
-- **Vision Board versioning:** Explicit save creates committed version for use elsewhere
+- **Simple navigation:** Consistent "Next" button throughout (top and bottom)
+- **Download functionality:** Charts and visualizations can be exported as PNG
+- **Quick navigation:** Top action buttons provide immediate access to key actions
 
 **Routes:**
 - `/clarity-wizard` - Home (list journeys, start new)
 - `/clarity-wizard/new/period` - Define focus period
-- `/clarity-wizard/:journeyId/tools` - Select tools
-- `/clarity-wizard/:journeyId/wheel-of-life` - Wheel of Life (optional)
-- `/clarity-wizard/:journeyId/swot` - SWOT (optional)
-- `/clarity-wizard/:journeyId/vision-board` - Vision Board (optional)
-- `/clarity-wizard/:journeyId/big-5` - Big 5 & OKRs (required)
+- `/clarity-wizard/:journeyId/tools` - Tools overview
+- `/clarity-wizard/:journeyId/wheel-of-life` - Wheel of Life
+- `/clarity-wizard/:journeyId/swot` - SWOT Analysis
+- `/clarity-wizard/:journeyId/vision-board` - Vision Board
+- `/clarity-wizard/:journeyId/big-5` - Big 5 & OKRs
 - `/clarity-wizard/:journeyId/summary` - Summary view
+
+---
+
+## Implementation Status
+
+### ✅ Completed Steps
+
+**Step 1: Database Schema Foundation**
+- All tables created with RLS policies
+- Migration: `008_simplify_wizard_workflow.sql` - removed legacy tool selection fields
+- Completion flags kept for future analytics
+
+**Step 2: Navigation & Routing Setup**
+- All routes configured in `App.tsx`
+- Dashboard menu item added
+- Navigation system functional
+
+**Step 3: Clarity Wizard Home Page**
+- Displays active and past journeys
+- Create new journey functionality
+- Resume draft journeys
+- Archive/close journeys
+
+**Step 4: Define Focus Period Step**
+- Date selection with validation
+- Preset period buttons (3, 6, 12 months)
+- Optional journey name and cover image
+- Autosave hook implemented
+- Draft persistence
+
+**Step 5: Tools Overview Step**
+- Displays all 4 tool cards
+- Informational only (no selection)
+- Next button navigates to first tool
+
+**Step 6: Wheel of Life Step**
+- 9 default life areas with editable labels
+- 1-10 slider ratings
+- Optional notes per area
+- Add/remove custom areas
+- Interactive radar chart visualization with proper label spacing
+- Download chart as PNG functionality
+- Next button at top (below description) and bottom
+- Download button at top (left of Next button)
+- Autosave functionality
+- Next/Back navigation
+
+**Step 7: SWOT Analysis Step**
+- 2x2 grid layout for all quadrants
+- Add/edit/delete entries
+- Optional notes per entry
+- SWOT visualization component with download functionality
+- Next button in visualization header (right of Download button)
+- Download button for SWOT visualization (PNG export)
+- Autosave functionality
+- Next/Back navigation (top and bottom)
+
+### 🚧 Placeholder Components
+
+**Step 8: Vision Board Step**
+- Placeholder UI with "Coming Soon" message
+- Next/Back navigation functional
+- Full implementation pending
+
+**Step 9: Big 5 & OKRs Step**
+- Placeholder UI with "Coming Soon" message
+- "Complete Journey" button marks journey as completed
+- Back navigation functional
+- Full implementation pending
+
+**Step 10: Summary View**
+- Not yet implemented
+- Will display completed journey overview
+
+### 🎯 Simplified Workflow Benefits
+
+The current implementation uses a **simplified linear workflow**:
+- ✅ All tools are required (no skipping)
+- ✅ Fixed progression order
+- ✅ Consistent "Next" button UX
+- ✅ No conditional navigation logic
+- ✅ Cleaner, more maintainable codebase
+- ✅ Better user experience (clear path forward)
 
 ---
 
@@ -77,13 +164,17 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 - name (text, nullable) -- Period name
 - period_start (date)
 - period_end (date)
-- tools_wheel_of_life (boolean, default true)
-- tools_swot (boolean, default true)
-- tools_vision_board (boolean, default true)
+- cover_image_url (text, nullable) -- Optional journey cover image
+- wheel_done (boolean, default false) -- Analytics flag
+- swot_done (boolean, default false) -- Analytics flag
+- vision_done (boolean, default false) -- Analytics flag
+- big5_done (boolean, default false) -- Analytics flag
 - status (text, check in ('draft','completed','archived'), default 'draft')
 - created_at (timestamptz, default now())
 - updated_at (timestamptz, default now())
 ```
+
+**Note:** Completion flags are for analytics/progress tracking only and do not control navigation flow.
 
 **RLS Policy:** Users can only access their own journeys (`user_id = auth.uid()`)
 
@@ -274,14 +365,16 @@ The Clarity Wizard is a multi-step guided journey that helps users:
    - Start date picker (default: today)
    - End date picker (default: 12 months from start)
    - Preset buttons: 3, 6, 12 months
+   - Optional cover image upload
    - Validation: end > start, max 24 months
    - Autosave on blur/delay
-   - "Continue" creates/updates journey, navigates to tools
+   - "Continue" creates/updates journey, navigates to tools overview
    - "Cancel" saves as draft, returns to home
 
 **Acceptance Criteria:**
 - Date validation works
 - Presets update dates correctly
+- Cover image upload works
 - Autosave saves to database
 - Navigation works correctly
 - Draft preserved on cancel
@@ -290,33 +383,31 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 
 ---
 
-### Step 5: Tool Selection Step
+### Step 5: Tools Overview Step
 
 **Files to create:**
 - `login-app/src/components/clarity-wizard/ToolSelectionStep.tsx`
 
 **Tasks:**
-1. Create tool cards:
-   - Wheel of Life (toggleable)
-   - SWOT (toggleable)
-   - Vision Board (toggleable)
-   - Big 5 & OKRs (always on, marked "Required")
+1. Create tool cards (display only):
+   - Wheel of Life
+   - SWOT Analysis
+   - Vision Board
+   - Big 5 & OKRs
 2. Each card shows:
-   - Description
+   - Tool name and description
    - Time estimate (e.g., "5-10 minutes")
-   - Toggle switch
+   - Icon
 3. Behavior:
-   - Default: all tools on
-   - Autosave selections immediately on toggle
-   - "Start exercises" navigates to first enabled tool
-   - Dynamic step sequence based on selections
+   - Informational only - no toggles
+   - "Next" button navigates to Wheel of Life (first tool)
+   - Back button returns to period step
 
 **Acceptance Criteria:**
-- All tools toggle correctly
-- Big 5 cannot be deselected
-- Selections autosave
-- Navigation respects tool selection order
-- Visual indication of required vs optional
+- All tool cards display correctly
+- Clear descriptions and time estimates
+- Next button navigates to first tool
+- Consistent styling with design system
 
 **Dependencies:** Step 1, Step 2
 
@@ -326,27 +417,38 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 
 **Files to create:**
 - `login-app/src/components/clarity-wizard/WheelOfLifeStep.tsx`
+- `login-app/src/lib/wheel-of-life.ts` - API functions
 
 **Tasks:**
-1. Default life areas (8-10):
+1. Default life areas (9):
    - Health, Career, Finances, Relationships, Personal Growth, Fun, Environment, Community, Spirituality
 2. For each area:
-   - Editable label
-   - Slider or 1-10 rating input
-   - Optional note field
+   - Editable label (defaults cannot be deleted)
+   - Slider 1-10 rating input
+   - Optional note field (collapsible)
 3. Features:
-   - Add/remove custom areas
+   - Add custom areas (deletable)
    - Autosave all changes (debounced)
-   - "Skip" button marks step as skipped
-   - "Next" navigates to next enabled tool or Big 5
+   - Interactive radar chart visualization (WheelChart component)
+   - Chart sizing: 550px with 80px padding to prevent label cutoff
+   - Multi-line label support for long area names
+   - Download chart as PNG (1200x1200px with dark background)
+   - Top action buttons: Download (left) and Next (right) below description
+   - Bottom navigation: Back and Next buttons
+   - "Next" button navigates to SWOT step
+   - "Back" button returns to tools overview
 
 **Acceptance Criteria:**
 - Can rate all areas
-- Can add custom areas
-- Can add notes
-- Autosave works
-- Skip functionality works
-- Navigation respects tool selection
+- Can add/remove custom areas
+- Can add notes per area
+- Radar chart displays correctly with all labels visible (no cutoff)
+- Chart labels wrap to multiple lines for long names
+- Download button exports chart as PNG
+- Top Next button provides quick navigation
+- Autosave works correctly
+- Next/Back navigation works (top and bottom)
+- Clean, intuitive UI
 
 **Dependencies:** Step 1, Step 2, Step 5
 
@@ -355,30 +457,46 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 ### Step 7: SWOT Analysis Step
 
 **Files to create:**
+- `login-app/src/lib/swot.ts` - API functions for SWOT operations
 - `login-app/src/components/clarity-wizard/SWOTStep.tsx`
+- `login-app/src/components/clarity-wizard/SWOTVisualization.tsx` - Optional visualization
 
 **Tasks:**
-1. 2x2 grid layout:
+1. Create API functions in `swot.ts`:
+   - `getSWOTEntries(journeyId)` - Fetch all SWOT entries for a journey
+   - `saveSWOTEntry(journeyId, entry)` - Save or update a SWOT entry
+   - `deleteSWOTEntry(entryId)` - Delete a SWOT entry
+2. 2x2 grid layout:
    - Strengths (top-left)
    - Weaknesses (top-right)
    - Opportunities (bottom-left)
    - Threats (bottom-right)
-2. For each quadrant:
-   - Chip/tag style input
-   - Add/remove items
-   - Optional notes per item or quadrant
-3. Features:
-   - Autosave on add/edit/remove
-   - "Skip" and "Next" navigation
+3. For each quadrant:
+   - Input field for adding new entries
+   - Bulleted list of existing entries
+   - Edit/delete actions on hover
+   - Optional notes per item (expandable)
+4. Features:
+   - Autosave on add/edit/remove (debounced)
+   - SWOT visualization with download functionality (PNG export)
+   - Top action buttons in visualization header: Download (left) and Next (right)
+   - Bottom navigation: Back and Next buttons
+   - "Next" button navigates to Vision Board
+   - "Back" button navigates to Wheel of Life
 
 **Acceptance Criteria:**
 - Can add items to all quadrants
+- Can edit entry content inline
 - Can remove items
-- Can add notes
-- Autosave works
-- Visual layout matches spec
+- Can add notes per item
+- SWOT visualization displays correctly
+- Download button exports SWOT visualization as PNG
+- Top Next button provides quick navigation in header
+- Autosave works correctly
+- Visual layout matches spec (clean bulleted list)
+- Next/Back navigation works (top and bottom)
 
-**Dependencies:** Step 1, Step 2, Step 5
+**Dependencies:** Step 1, Step 2, Step 6
 
 ---
 
@@ -387,6 +505,8 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 **Files to create:**
 - `login-app/src/components/clarity-wizard/VisionBoardStep.tsx`
 - `login-app/src/lib/vision-board.ts` - Image upload utilities
+
+**Status:** Currently implemented as placeholder component
 
 **Tasks:**
 1. Image upload:
@@ -402,8 +522,8 @@ The Clarity Wizard is a multi-step guided journey that helps users:
    - "Save Board" creates committed version (`is_committed = true`)
    - Set previous committed versions to `is_current = false`
 4. Navigation:
-   - "Next" navigates to Big 5
-   - "Back" navigates to previous step
+   - "Next" button navigates to Big 5
+   - "Back" button navigates to SWOT
 
 **Acceptance Criteria:**
 - Can upload multiple images
@@ -412,8 +532,9 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 - Draft autosaves
 - "Save Board" creates committed version
 - Images display correctly
+- Next/Back navigation works
 
-**Dependencies:** Step 1, Step 2, Step 5
+**Dependencies:** Step 1, Step 2, Step 7
 
 ---
 
@@ -423,6 +544,8 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 - `login-app/src/components/clarity-wizard/Big5Step.tsx`
 - `login-app/src/components/clarity-wizard/Big5Card.tsx`
 - `login-app/src/components/clarity-wizard/OKRRow.tsx`
+
+**Status:** Currently implemented as placeholder component
 
 **Tasks:**
 1. Intro section:
@@ -444,17 +567,19 @@ The Clarity Wizard is a multi-step guided journey that helps users:
 5. Features:
    - Progress indicator (X of 5 completed)
    - Autosave all fields
-   - "Finish and save my Big 5" marks journey complete, navigates to summary
+   - "Complete Journey" button marks journey complete, navigates to home
+   - "Back" button navigates to Vision Board
 
 **Acceptance Criteria:**
 - Can create all 5 Big 5 outcomes
 - Can add 3 OKRs per Big 5
 - Template helper text is clear
-- Supportive context shows insights
+- Supportive context shows insights from previous steps
 - Progress indicator works
-- Finish marks journey complete
+- Complete Journey marks status as 'completed'
+- Navigation works correctly
 
-**Dependencies:** Step 1, Step 2, Step 5, Step 6, Step 7
+**Dependencies:** Step 1, Step 2, Step 6, Step 7, Step 8
 
 ---
 
@@ -588,8 +713,10 @@ useEffect(() => {
 ```
 
 ### Navigation Flow
-The wizard sequence is dynamic based on tool selection:
-1. Period → Tools → [Wheel of Life?] → [SWOT?] → [Vision Board?] → Big 5 → Summary
+The wizard follows a fixed linear sequence:
+1. Home → Period → Tools Overview → Wheel of Life → SWOT → Vision Board → Big 5 → (Home/Summary)
+
+All steps are required. Users navigate with consistent "Next" and "Back" buttons throughout.
 
 ### Data Loading Pattern
 ```typescript
@@ -612,18 +739,65 @@ Always provide user feedback:
 - Error messages
 - Success confirmations (toast notifications)
 
+### Download Functionality Pattern
+For chart/visualization components that need PNG export:
+```typescript
+// Use forwardRef to access SVG element
+const Chart = forwardRef<SVGSVGElement, ChartProps>(({ data }, ref) => {
+  return <svg ref={ref}>...</svg>
+})
+
+// In parent component
+const svgRef = useRef<SVGSVGElement>(null)
+
+const handleDownload = () => {
+  if (!svgRef.current) return
+  
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  canvas.width = 1200
+  canvas.height = 1200
+  ctx.fillStyle = '#0B0C10' // Dark background
+  ctx.fillRect(0, 0, width, height)
+  
+  const svgData = new XMLSerializer().serializeToString(svgRef.current)
+  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(svgBlob)
+  
+  const img = new Image()
+  img.onload = () => {
+    ctx.drawImage(img, offsetX, offsetY)
+    URL.revokeObjectURL(url)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const pngUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = 'filename.png'
+      link.href = pngUrl
+      link.click()
+      URL.revokeObjectURL(pngUrl)
+    })
+  }
+  img.src = url
+}
+```
+
 ---
 
 ## Testing Checklist (Per Step)
 
 - [ ] Data persists correctly (autosave)
-- [ ] Navigation flow works
+- [ ] Linear navigation flow works (Next/Back buttons)
 - [ ] Validation rules enforced
 - [ ] Error states handled gracefully
 - [ ] Edge cases handled (empty states, long text, etc.)
 - [ ] Styling matches design system
 - [ ] Responsive on mobile
 - [ ] Accessible (keyboard navigation, screen readers)
+- [ ] No linter errors
+- [ ] Loading states display correctly
 
 ---
 
