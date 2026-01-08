@@ -153,11 +153,23 @@ export async function signIn(
 }
 
 /**
+ * Clear the user cache (useful after sign out or session changes)
+ */
+export function clearUserCache() {
+  cachedUser = null
+  cacheTimestamp = 0
+  getUserPromise = null
+}
+
+/**
  * Sign out the current user
  */
 export async function signOut(): Promise<AuthResult> {
   try {
     const { error } = await supabase.auth.signOut()
+
+    // Clear cache on sign out
+    clearUserCache()
 
     if (error) {
       return {
@@ -217,40 +229,71 @@ export async function getSession() {
   }
 }
 
+// Cache for getCurrentUser to prevent duplicate requests
+let getUserPromise: Promise<any> | null = null
+let cachedUser: any = null
+let cacheTimestamp: number = 0
+const CACHE_DURATION_MS = 5000 // Cache for 5 seconds
+const REQUEST_TIMEOUT_MS = 10000 // Increase timeout to 10 seconds
+
 /**
- * Get the current user
+ * Get the current user with request deduplication and caching
  */
 export async function getCurrentUser() {
-  console.log('getCurrentUser: calling supabase.auth.getUser()')
-  try {
-    // Prevent hanging requests that block UI loading
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-    const getUserPromise = supabase.auth.getUser()
-    const timeoutPromise = new Promise<{ data: { user: null }; error: { message: string; code: string } }>((resolve) => {
-      timeoutId = setTimeout(() => {
-        console.warn('getCurrentUser: timeout after 5 seconds')
-        resolve({ data: { user: null }, error: { message: 'Timeout', code: 'TIMEOUT' } })
-      }, 5000)
-    })
-
-    const { data, error } = await Promise.race([getUserPromise, timeoutPromise])
-
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-    }
-    console.log('getCurrentUser: supabase.auth.getUser() completed', { data: data?.user?.id, error })
-    
-    if (error) {
-      console.error('Error getting user:', error)
-      return null
-    }
-    
-    return data.user
-  } catch (err) {
-    console.error('Exception in getCurrentUser:', err)
-    return null
+  // Return cached user if still valid
+  const now = Date.now()
+  if (cachedUser && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+    return cachedUser
   }
+
+  // If a request is already in progress, return the same promise
+  if (getUserPromise) {
+    return getUserPromise
+  }
+
+  // Start new request
+  getUserPromise = (async () => {
+    try {
+      // Prevent hanging requests that block UI loading
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+      const getUserPromise = supabase.auth.getUser()
+      const timeoutPromise = new Promise<{ data: { user: null }; error: { message: string; code: string } }>((resolve) => {
+        timeoutId = setTimeout(() => {
+          console.warn('getCurrentUser: timeout after', REQUEST_TIMEOUT_MS / 1000, 'seconds')
+          resolve({ data: { user: null }, error: { message: 'Timeout', code: 'TIMEOUT' } })
+        }, REQUEST_TIMEOUT_MS)
+      })
+
+      const { data, error } = await Promise.race([getUserPromise, timeoutPromise])
+
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+      
+      if (error) {
+        console.error('Error getting user:', error)
+        cachedUser = null
+        cacheTimestamp = now
+        return null
+      }
+      
+      // Cache the result
+      cachedUser = data.user
+      cacheTimestamp = now
+      return data.user
+    } catch (err) {
+      console.error('Exception in getCurrentUser:', err)
+      cachedUser = null
+      cacheTimestamp = now
+      return null
+    } finally {
+      // Clear the promise so new requests can be made after cache expires
+      getUserPromise = null
+    }
+  })()
+
+  return getUserPromise
 }
 
 /**
