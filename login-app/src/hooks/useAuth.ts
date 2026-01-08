@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { getCurrentUser } from '../lib/auth'
+import { getCurrentUser, clearUserCache } from '../lib/auth'
 
 interface UseAuthReturn {
   userId: string | null
@@ -67,6 +67,9 @@ export function useAuth(): UseAuthReturn {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event)
+        
+        // Clear cache on auth state changes to ensure fresh data
+        clearUserCache()
         
         if (!isMounted) return
 
