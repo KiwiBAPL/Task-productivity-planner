@@ -13,7 +13,7 @@ import {
   type VisionBoardVersion,
   type VisionBoardImage,
 } from '../../lib/vision-board'
-import { TextEditor } from './TextEditor'
+import AddTextModal from './AddTextModal'
 
 interface DragState {
   imageId: string
@@ -32,9 +32,6 @@ interface DragState {
 }
 
 export default function VisionBoardStep() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VisionBoardStep.tsx:34',message:'VisionBoardStep component entry',data:{hasTextEditor:!!TextEditor,textEditorType:typeof TextEditor},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const { journeyId } = useParams<{ journeyId: string }>()
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -51,6 +48,8 @@ export default function VisionBoardStep() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [isEditMode, setIsEditMode] = useState(true)
+  const [isAddTextModalOpen, setIsAddTextModalOpen] = useState(false)
+  const [editingTextId, setEditingTextId] = useState<string | null>(null)
 
   // Canvas dimensions
   const CANVAS_WIDTH = 1200
@@ -133,9 +132,6 @@ export default function VisionBoardStep() {
     z_index?: number
   }>(
     async (updates) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VisionBoardStep.tsx:131',message:'autosavePosition callback',data:{updates,hasRotation:'rotation' in updates,rotationValue:updates.rotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       // Only include fields that are actually defined
       const updatePayload: {
         position_x: number
@@ -163,9 +159,6 @@ export default function VisionBoardStep() {
       }
       
       const result = await updateVisionBoardImage(updates.imageId, updatePayload)
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VisionBoardStep.tsx:142',message:'autosavePosition result',data:{success:result.success,error:result.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       if (!result.success) {
         throw new Error(result.error || 'Failed to save position')
       }
@@ -256,45 +249,65 @@ export default function VisionBoardStep() {
     [journeyId, version, images.length]
   )
 
-  const handleCreateText = useCallback(async () => {
+  const handleAddTextConfirm = useCallback(async (htmlContent: string) => {
     if (!journeyId || !version?.id) return
 
     try {
-      const result = await createVisionBoardText(journeyId, version.id, '<p>New text</p>')
-      
-      if (result.success && result.data) {
-        const newText = result.data as VisionBoardImage
-        // Auto-position new text element
-        const positionedText = {
-          ...newText,
-          position_x: Math.random() * (CANVAS_WIDTH - 200) + 50,
-          position_y: Math.random() * (CANVAS_HEIGHT - 200) + 50,
-          rotation: (Math.random() - 0.5) * 10, // Less rotation for text
-          width: 200,
-          height: 100,
-          z_index: images.length,
-        }
-        setImages((prev) => [...prev, positionedText])
-        setSelectedImage(positionedText.id || null)
+      if (editingTextId) {
+        // Update existing text element
+        const result = await updateVisionBoardImage(editingTextId, { text_content: htmlContent })
         
-        // Save position
-        if (positionedText.id) {
-          await updateVisionBoardImage(positionedText.id, {
-            position_x: positionedText.position_x,
-            position_y: positionedText.position_y,
-            rotation: positionedText.rotation,
-            width: positionedText.width,
-            height: positionedText.height,
-            z_index: positionedText.z_index,
-          })
+        if (result.success) {
+          setImages((prev) =>
+            prev.map((img) => (img.id === editingTextId ? { ...img, text_content: htmlContent } : img))
+          )
+          
+          // Close modal and reset editing state
+          setIsAddTextModalOpen(false)
+          setEditingTextId(null)
+        } else {
+          setError(result.error || 'Failed to update text')
         }
       } else {
-        setError(result.error || 'Failed to create text')
+        // Create new text element
+        const result = await createVisionBoardText(journeyId, version.id, htmlContent)
+        
+        if (result.success && result.data) {
+          const newText = result.data as VisionBoardImage
+          // Auto-position new text element
+          const positionedText = {
+            ...newText,
+            position_x: Math.random() * (CANVAS_WIDTH - 200) + 50,
+            position_y: Math.random() * (CANVAS_HEIGHT - 200) + 50,
+            rotation: (Math.random() - 0.5) * 10, // Less rotation for text
+            width: 200,
+            height: 100,
+            z_index: images.length,
+          }
+          setImages((prev) => [...prev, positionedText])
+          
+          // Save position
+          if (positionedText.id) {
+            await updateVisionBoardImage(positionedText.id, {
+              position_x: positionedText.position_x,
+              position_y: positionedText.position_y,
+              rotation: positionedText.rotation,
+              width: positionedText.width,
+              height: positionedText.height,
+              z_index: positionedText.z_index,
+            })
+          }
+          
+          // Close modal
+          setIsAddTextModalOpen(false)
+        } else {
+          setError(result.error || 'Failed to create text')
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create text')
+      setError(err instanceof Error ? err.message : 'Failed to save text')
     }
-  }, [journeyId, version, images.length])
+  }, [journeyId, version, images.length, editingTextId])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, imageId: string, type: 'move' | 'resize' | 'rotate' = 'move', handle?: 'nw' | 'ne' | 'sw' | 'se' | 'rotate') => {
@@ -713,7 +726,7 @@ export default function VisionBoardStep() {
                 </div>
               </button>
               <button
-                onClick={handleCreateText}
+                onClick={() => setIsAddTextModalOpen(true)}
                 className="glass-card p-6 rounded-2xl border-2 border-dashed border-auro-stroke-subtle hover:border-auro-accent hover:bg-auro-accent/5 transition-all text-auro-text-secondary hover:text-auro-text-primary flex flex-col items-center justify-center gap-3 min-w-[200px]"
               >
                 <div className="w-12 h-12 rounded-full bg-auro-accent-soft flex items-center justify-center">
@@ -777,7 +790,14 @@ export default function VisionBoardStep() {
                     onMouseDown={(e) => isEditMode && handleMouseDown(e, image.id || '', 'move')}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setSelectedImage(image.id || null)
+                      if (isText) {
+                        // Open modal for text editing
+                        setEditingTextId(image.id || null)
+                        setIsAddTextModalOpen(true)
+                      } else {
+                        // Set selected for image caption editing
+                        setSelectedImage(image.id || null)
+                      }
                     }}
                   >
                     {isText ? (
@@ -981,19 +1001,19 @@ export default function VisionBoardStep() {
             </div>
           </div>
 
-          {/* Selected element editor */}
+          {/* Selected element editor - Image captions only */}
           {isEditMode && selectedImage && !deleteConfirm && (() => {
             const selectedElement = images.find((img) => img.id === selectedImage)
             const isText = selectedElement?.element_type === 'text'
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VisionBoardStep.tsx:979',message:'Rendering selected element editor',data:{selectedImage,hasSelectedElement:!!selectedElement,isText,hasTextEditor:!!TextEditor,textEditorType:typeof TextEditor},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
+            
+            // Don't show editor for text elements - they use the modal
+            if (isText) return null
             
             return (
               <div className="glass-card p-4 rounded-xl mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-auro-text-primary">
-                    {isText ? 'Edit Text' : 'Edit Image'}
+                    Edit Image
                   </h3>
                   <button
                     onClick={() => setSelectedImage(null)}
@@ -1004,38 +1024,19 @@ export default function VisionBoardStep() {
                     </svg>
                   </button>
                 </div>
-                {isText ? (
-                  <TextEditor
-                    value={selectedElement?.text_content || '<p>New text</p>'}
-                    onChange={(html) => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VisionBoardStep.tsx:1001',message:'TextEditor onChange',data:{hasTextEditor:!!TextEditor,htmlLength:html?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                      // #endregion
-                      if (selectedElement?.id) {
-                        setImages((prev) =>
-                          prev.map((img) => (img.id === selectedImage ? { ...img, text_content: html } : img))
-                        )
-                        autosaveTextContent({ imageId: selectedElement.id, textContent: html })
-                      }
-                    }}
-                    placeholder="Enter text..."
-                    className="mb-0"
-                  />
-                ) : (
-                  <textarea
-                    value={selectedElement?.caption || ''}
-                    onChange={(e) => {
-                      if (selectedElement?.id) {
-                        setImages((prev) =>
-                          prev.map((img) => (img.id === selectedImage ? { ...img, caption: e.target.value } : img))
-                        )
-                        autosaveCaption({ imageId: selectedElement.id, caption: e.target.value })
-                      }
-                    }}
-                    placeholder="Add a caption..."
-                    className="w-full input-field rounded-xl min-h-[80px] resize-none text-sm"
-                  />
-                )}
+                <textarea
+                  value={selectedElement?.caption || ''}
+                  onChange={(e) => {
+                    if (selectedElement?.id) {
+                      setImages((prev) =>
+                        prev.map((img) => (img.id === selectedImage ? { ...img, caption: e.target.value } : img))
+                      )
+                      autosaveCaption({ imageId: selectedElement.id, caption: e.target.value })
+                    }
+                  }}
+                  placeholder="Add a caption..."
+                  className="w-full input-field rounded-xl min-h-[80px] resize-none text-sm"
+                />
               </div>
             )
           })()}
@@ -1104,6 +1105,17 @@ export default function VisionBoardStep() {
           </div>
         </div>
       </div>
+
+      {/* Add Text Modal */}
+      <AddTextModal
+        isOpen={isAddTextModalOpen}
+        onClose={() => {
+          setIsAddTextModalOpen(false)
+          setEditingTextId(null)
+        }}
+        onConfirm={handleAddTextConfirm}
+        initialText={editingTextId ? images.find(img => img.id === editingTextId)?.text_content : undefined}
+      />
     </div>
   )
 }

@@ -356,9 +356,6 @@ export async function updateVisionBoardImage(
   }
 ): Promise<VisionBoardResult> {
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:352',message:'updateVisionBoardImage entry',data:{imageId,updates,hasRotation:'rotation' in updates,rotationValue:updates.rotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const user = await getCurrentUser()
     if (!user) {
       return {
@@ -367,9 +364,6 @@ export async function updateVisionBoardImage(
       }
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:361',message:'Before Supabase update',data:{imageId,updateKeys:Object.keys(updates),updatesObject:updates},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const { data, error } = await supabase
       .from('vision_board_images')
       .update(updates)
@@ -377,13 +371,7 @@ export async function updateVisionBoardImage(
       .select()
       .single()
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:368',message:'After Supabase update',data:{hasError:!!error,errorMessage:error?.message,errorCode:error?.code,errorDetails:error,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:370',message:'Supabase error details',data:{errorMessage:error.message,errorCode:error.code,fullError:JSON.stringify(error),errorHint:error.hint,errorDetails:error.details},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return {
         success: false,
         error: error.message,
@@ -510,9 +498,6 @@ export async function createVisionBoardText(
     // Create database record for text element
     // For text elements, we use a placeholder storage_path since it's required by the schema
     // but not actually used for text elements
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:513',message:'Before inserting text element',data:{versionId,textContentLength:textContent.length,nextPosition,hasTextContent:!!textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const { data: textRecord, error: dbError } = await supabase
       .from('vision_board_images')
       .insert({
@@ -526,9 +511,6 @@ export async function createVisionBoardText(
       .select()
       .single()
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vision-board.ts:525',message:'After inserting text element',data:{hasError:!!dbError,errorMessage:dbError?.message,errorCode:dbError?.code,hasData:!!textRecord},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (dbError) {
       return {
         success: false,
