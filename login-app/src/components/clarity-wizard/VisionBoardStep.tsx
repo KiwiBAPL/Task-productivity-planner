@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import html2canvas from 'html2canvas'
 import { useAutosave } from '../../hooks/useAutosave'
 import { getJourneyById, getNextStep, getPreviousStep, type ClarityJourney } from '../../lib/clarity-wizard'
 import {
@@ -36,6 +37,7 @@ export default function VisionBoardStep() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const canvasContentRef = useRef<HTMLDivElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
 
   const [journey, setJourney] = useState<ClarityJourney | null>(null)
@@ -50,6 +52,7 @@ export default function VisionBoardStep() {
   const [isEditMode, setIsEditMode] = useState(true)
   const [isAddTextModalOpen, setIsAddTextModalOpen] = useState(false)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   // Canvas dimensions
   const CANVAS_WIDTH = 1200
@@ -631,6 +634,86 @@ export default function VisionBoardStep() {
     }
   }
 
+  async function handleDownload() {
+    if (!canvasRef.current || !canvasContentRef.current) return
+
+    setIsDownloading(true)
+    setError('')
+
+    try {
+      // Temporarily hide edit controls and selection indicators
+      const originalSelectedImage = selectedImage
+      setSelectedImage(null)
+
+      // Wait a moment for state to update
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Capture the canvas content area with explicit dimensions
+      const sourceCanvas = await html2canvas(canvasContentRef.current, {
+        backgroundColor: '#0B0C10', // Match the background color
+        scale: 2, // Higher quality
+        useCORS: true,
+        logging: false,
+        width: CANVAS_WIDTH,
+        height: CANVAS_HEIGHT,
+        x: 0,
+        y: 0,
+      })
+
+      // Restore selection state
+      setSelectedImage(originalSelectedImage)
+
+      // Create a new canvas with landscape orientation (swapped dimensions)
+      const landscapeCanvas = document.createElement('canvas')
+      landscapeCanvas.width = sourceCanvas.height // Landscape width: 1600
+      landscapeCanvas.height = sourceCanvas.width // Landscape height: 1200
+      const ctx = landscapeCanvas.getContext('2d')
+
+      if (!ctx) {
+        setError('Failed to create canvas context')
+        return
+      }
+
+      // Fill background
+      ctx.fillStyle = '#0B0C10'
+      ctx.fillRect(0, 0, landscapeCanvas.width, landscapeCanvas.height)
+
+      // Scale the portrait content to fit the landscape canvas height
+      // This maintains aspect ratio and centers horizontally
+      const scale = landscapeCanvas.height / sourceCanvas.height // 1200 / 1600 = 0.75
+      const scaledWidth = sourceCanvas.width * scale // 1200 * 0.75 = 900
+      const offsetX = (landscapeCanvas.width - scaledWidth) / 2 // Center horizontally
+      
+      ctx.drawImage(
+        sourceCanvas,
+        0, 0, sourceCanvas.width, sourceCanvas.height, // Source rectangle
+        offsetX, 0, scaledWidth, landscapeCanvas.height // Destination rectangle (centered horizontally)
+      )
+
+      // Convert to blob and download
+      landscapeCanvas.toBlob((blob) => {
+        if (!blob) {
+          setError('Failed to generate image')
+          return
+        }
+
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `vision-board-${journeyId || 'export'}-${Date.now()}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    } catch (err) {
+      console.error('Error downloading vision board:', err)
+      setError(err instanceof Error ? err.message : 'Failed to download vision board')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   // Sort images by z_index for proper layering
   const sortedImages = [...images].sort((a, b) => (a.z_index || 0) - (b.z_index || 0))
 
@@ -697,49 +780,70 @@ export default function VisionBoardStep() {
 
           {/* Upload area and Add Text button */}
           {isEditMode && (
-            <div className="mb-6 flex gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingFiles.size > 0}
-                className="flex-1 glass-card p-6 rounded-2xl border-2 border-dashed border-auro-stroke-subtle hover:border-auro-accent hover:bg-auro-accent/5 transition-all text-auro-text-secondary hover:text-auro-text-primary flex flex-col items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="w-12 h-12 rounded-full bg-auro-accent-soft flex items-center justify-center">
-                  <svg className="w-6 h-6 text-auro-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            <>
+              <div className="mb-6 flex justify-end gap-3">
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading || images.length === 0}
+                  className="px-8 py-3 rounded-full glass-control text-auro-text-primary hover:bg-white/8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium mb-1">
-                    {uploadingFiles.size > 0 ? 'Uploading...' : 'Upload Images'}
-                  </p>
-                  <p className="text-xs text-auro-text-tertiary">
-                    Click to select images (JPEG, PNG, GIF, WebP) • Max 10MB each
-                  </p>
-                </div>
-              </button>
-              <button
-                onClick={() => setIsAddTextModalOpen(true)}
-                className="glass-card p-6 rounded-2xl border-2 border-dashed border-auro-stroke-subtle hover:border-auro-accent hover:bg-auro-accent/5 transition-all text-auro-text-secondary hover:text-auro-text-primary flex flex-col items-center justify-center gap-3 min-w-[200px]"
-              >
-                <div className="w-12 h-12 rounded-full bg-auro-accent-soft flex items-center justify-center">
-                  <svg className="w-6 h-6 text-auro-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium mb-1">Add Text</p>
-                  <p className="text-xs text-auro-text-tertiary">Create text element</p>
-                </div>
-              </button>
-            </div>
+                  {isDownloading ? 'Downloading...' : 'Download PNG'}
+                </button>
+                <button
+                  onClick={handleNext}
+                  disabled={isSubmitting || uploadingFiles.size > 0}
+                  className="px-8 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Saving...' : 'Next'}
+                </button>
+              </div>
+              <div className="mb-6 flex gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFiles.size > 0}
+                  className="flex-1 glass-card p-6 rounded-2xl border-2 border-dashed border-auro-stroke-subtle hover:border-auro-accent hover:bg-auro-accent/5 transition-all text-auro-text-secondary hover:text-auro-text-primary flex flex-col items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="w-12 h-12 rounded-full bg-auro-accent-soft flex items-center justify-center">
+                    <svg className="w-6 h-6 text-auro-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium mb-1">
+                      {uploadingFiles.size > 0 ? 'Uploading...' : 'Upload Images'}
+                    </p>
+                    <p className="text-xs text-auro-text-tertiary">
+                      Click to select images (JPEG, PNG, GIF, WebP) • Max 10MB each
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setIsAddTextModalOpen(true)}
+                  className="glass-card p-6 rounded-2xl border-2 border-dashed border-auro-stroke-subtle hover:border-auro-accent hover:bg-auro-accent/5 transition-all text-auro-text-secondary hover:text-auro-text-primary flex flex-col items-center justify-center gap-3 min-w-[200px]"
+                >
+                  <div className="w-12 h-12 rounded-full bg-auro-accent-soft flex items-center justify-center">
+                    <svg className="w-6 h-6 text-auro-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium mb-1">Add Text</p>
+                    <p className="text-xs text-auro-text-tertiary">Create text element</p>
+                  </div>
+                </button>
+              </div>
+            </>
           )}
 
           {/* Collage Canvas */}
@@ -757,7 +861,7 @@ export default function VisionBoardStep() {
                   boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                 }}
               >
-                <div className="absolute inset-0">
+                <div ref={canvasContentRef} className="absolute inset-0">
               {/* Images and text elements positioned absolutely */}
               {sortedImages.map((image) => {
                 const isSelected = selectedImage === image.id
