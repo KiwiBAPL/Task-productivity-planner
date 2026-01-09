@@ -10,6 +10,7 @@ import WheelOfLifeStep from './components/clarity-wizard/WheelOfLifeStep'
 import SWOTStep from './components/clarity-wizard/SWOTStep'
 import VisionBoardStep from './components/clarity-wizard/VisionBoardStep'
 import Big5Step from './components/clarity-wizard/Big5Step'
+import SummaryView from './components/clarity-wizard/SummaryView'
 import { getCurrentUser, needsProfileSetup } from './lib/auth'
 import { supabase } from './lib/supabase'
 
@@ -171,9 +172,16 @@ function App() {
             )
           }
         />
-        {/* Additional routes will be added as components are created:
-            - /clarity-wizard/:journeyId/summary
-        */}
+        <Route
+          path="/clarity-wizard/:journeyId/summary"
+          element={
+            isAuthenticated && !needsSetup ? (
+              <SummaryView />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
       </Routes>
     </BrowserRouter>
   )

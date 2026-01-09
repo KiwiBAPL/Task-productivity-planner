@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getJourneyById, getPreviousStep, updateJourney, type ClarityJourney } from '../../lib/clarity-wizard'
-import { getBig5Buckets, type Big5BucketWithOKRs, type Big5OKR } from '../../lib/big5'
+import { getBig5Buckets, updateBig5BucketOrder, type Big5BucketWithOKRs, type Big5OKR } from '../../lib/big5'
 import Big5Card from './Big5Card'
 import SupportiveContextPanel from './SupportiveContextPanel'
 
@@ -13,6 +13,7 @@ export default function Big5Step() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showValidationErrors, setShowValidationErrors] = useState(false)
 
   // Load journey and buckets on mount
   useEffect(() => {
@@ -55,9 +56,9 @@ export default function Big5Step() {
             })
             setBuckets(bucketsWithOKRs)
           } else {
-            // Initialize with 5 empty buckets
-            const emptyBuckets: Big5BucketWithOKRs[] = Array.from({ length: 5 }, (_, i) => ({
-              order_index: i,
+            // Initialize with 1 empty bucket
+            const emptyBuckets: Big5BucketWithOKRs[] = [{
+              order_index: 0,
               title: '',
               statement: '',
               okrs: Array.from({ length: 3 }, (_, j) => ({
@@ -67,7 +68,7 @@ export default function Big5Step() {
                 target_value_number: null,
                 target_value_text: null,
               })) as Big5OKR[],
-            }))
+            }]
             setBuckets(emptyBuckets)
           }
         }
@@ -82,15 +83,51 @@ export default function Big5Step() {
     loadData()
   }, [journeyId])
 
-  // Calculate completion count
-  const completedCount = buckets.filter((bucket) => {
+  // Check if a bucket is "created" (has title or statement)
+  const isBucketCreated = (bucket: Big5BucketWithOKRs): boolean => {
+    return bucket.title.trim().length > 0 || bucket.statement.trim().length > 0
+  }
+
+  // Check if a bucket has at least one OKR with description
+  const hasAtLeastOneOKR = (bucket: Big5BucketWithOKRs): boolean => {
+    return bucket.okrs.length >= 1 && bucket.okrs.some((okr) => okr.description.trim().length > 0)
+  }
+
+  // Check if a bucket is fully complete (title, statement, and at least one OKR)
+  const isBucketComplete = (bucket: Big5BucketWithOKRs): boolean => {
     return (
       bucket.title.trim().length > 0 &&
-      bucket.statement.trim().length >= 10 &&
-      bucket.okrs.length === 3 &&
-      bucket.okrs.every((okr) => okr.description.trim().length > 0)
+      bucket.statement.trim().length > 0 &&
+      hasAtLeastOneOKR(bucket)
     )
-  }).length
+  }
+
+  // Calculate completion count
+  const completedCount = buckets.filter(isBucketComplete).length
+
+  // Validate all buckets: each created bucket must have at least one OKR
+  const validateBuckets = (): { isValid: boolean; errorMessage: string } => {
+    const createdBuckets = buckets.filter(isBucketCreated)
+    
+    if (createdBuckets.length === 0) {
+      return {
+        isValid: false,
+        errorMessage: 'Please create at least one Big 5 outcome before completing your journey. Each outcome needs a title, statement, and at least one key result (OKR).'
+      }
+    }
+
+    const bucketsWithoutOKRs = createdBuckets.filter((bucket) => !hasAtLeastOneOKR(bucket))
+    
+    if (bucketsWithoutOKRs.length > 0) {
+      const bucketNumbers = bucketsWithoutOKRs.map((b) => b.order_index + 1).join(', ')
+      return {
+        isValid: false,
+        errorMessage: `Each Big 5 outcome must have at least one key result (OKR). Please add at least one OKR to outcome${bucketsWithoutOKRs.length > 1 ? 's' : ''} ${bucketNumbers}.`
+      }
+    }
+
+    return { isValid: true, errorMessage: '' }
+  }
 
   // Handle bucket update
   const handleBucketUpdate = useCallback((updatedBucket: Big5BucketWithOKRs) => {
@@ -101,18 +138,76 @@ export default function Big5Step() {
     )
   }, [])
 
+  // Handle bucket deletion
+  const handleBucketDelete = useCallback(async (deletedBucket: Big5BucketWithOKRs) => {
+    setBuckets((prev) => {
+      // Remove the deleted bucket
+      const remaining = prev.filter((bucket) => bucket.order_index !== deletedBucket.order_index)
+      // Reorder remaining buckets to have consecutive order_index values
+      const reordered = remaining.map((bucket, index) => ({
+        ...bucket,
+        order_index: index,
+      }))
+      
+      // Update order_index in database for buckets that have IDs (fire and forget)
+      if (journeyId) {
+        Promise.allSettled(
+          reordered
+            .filter((bucket) => bucket.id)
+            .map((bucket) => updateBig5BucketOrder(journeyId, bucket.id!, bucket.order_index))
+        ).catch((err) => {
+          console.error('Error updating bucket order indices:', err)
+          // Non-critical error - state is already updated
+        })
+      }
+      
+      return reordered
+    })
+  }, [journeyId])
+
+  // Handle adding a new bucket
+  function handleAddBucket() {
+    if (buckets.length >= 5) return
+    
+    const newOrderIndex = buckets.length
+    const newBucket: Big5BucketWithOKRs = {
+      order_index: newOrderIndex,
+      title: '',
+      statement: '',
+      okrs: Array.from({ length: 3 }, (_, j) => ({
+        order_index: j,
+        description: '',
+        metric_type: 'number',
+        target_value_number: null,
+        target_value_text: null,
+      })) as Big5OKR[],
+    }
+    setBuckets((prev) => [...prev, newBucket])
+  }
+
   // Handle completion
   async function handleComplete() {
     if (!journeyId || !journey) return
 
-    // Validate all buckets are completed
-    if (completedCount < 5) {
-      setError('Please complete all 5 outcomes before finishing. Each outcome needs a title, statement, and 3 key results.')
+    // Show validation errors when user tries to complete
+    setShowValidationErrors(true)
+
+    // Validate all buckets meet requirements
+    const validation = validateBuckets()
+    if (!validation.isValid) {
+      setError(validation.errorMessage)
+      return
+    }
+
+    // Additional check: at least one bucket must be fully complete
+    if (completedCount < 1) {
+      setError('Please complete at least one outcome before finishing. Each outcome needs a title, statement, and at least one key result (OKR).')
       return
     }
 
     setIsSubmitting(true)
     setError('')
+    setShowValidationErrors(false)
 
     try {
       // Mark Big 5 as done and journey as completed
@@ -122,8 +217,8 @@ export default function Big5Step() {
         return
       }
 
-      // Navigate back to home
-      navigate('/clarity-wizard')
+      // Navigate to summary view
+      navigate(`/clarity-wizard/${journeyId}/summary`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete journey')
     } finally {
@@ -179,7 +274,7 @@ export default function Big5Step() {
             Define your Big 5 outcomes
           </h1>
           <p className="text-auro-text-secondary mb-4">
-            Create 5 outcome buckets with 3 key results each to guide your journey.
+            Create up to 5 outcome buckets. Each outcome must have a title, statement, and at least one key result (OKR) to be considered complete.
           </p>
           
           {/* Progress Indicator */}
@@ -219,8 +314,25 @@ export default function Big5Step() {
                 bucket={bucket}
                 journeyId={journeyId!}
                 onUpdate={handleBucketUpdate}
+                onDelete={handleBucketDelete}
+                showValidationErrors={showValidationErrors}
               />
             ))}
+            
+            {/* Add Big 5 Button */}
+            {buckets.length < 5 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleAddBucket}
+                  className="px-8 py-3 rounded-full glass-control text-auro-text-primary font-medium hover:bg-white/8 transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.20)] flex items-center justify-center gap-3"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add a Big 5 (Max 5)</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: Supportive Context Panel */}
@@ -240,7 +352,7 @@ export default function Big5Step() {
           </button>
           <button
             onClick={handleComplete}
-            disabled={isSubmitting || completedCount < 5}
+            disabled={isSubmitting || !validateBuckets().isValid || completedCount < 1}
             className="px-8 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Completing...' : 'Complete Journey'}

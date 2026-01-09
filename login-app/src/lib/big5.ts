@@ -140,10 +140,10 @@ export async function saveBig5Bucket(
       }
     }
 
-    if (!bucket.statement || bucket.statement.trim().length < 10) {
+    if (!bucket.statement || bucket.statement.trim().length === 0) {
       return {
         success: false,
-        error: 'Statement must be at least 10 characters',
+        error: 'Statement cannot be empty',
       }
     }
 
@@ -232,6 +232,50 @@ export async function deleteBig5Bucket(bucketId: string): Promise<Big5Result> {
 
     return {
       success: true,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
+
+/**
+ * Update order_index for a bucket (used for reordering after deletion)
+ */
+export async function updateBig5BucketOrder(
+  journeyId: string,
+  bucketId: string,
+  orderIndex: number
+): Promise<Big5Result> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('big5_buckets')
+      .update({ order_index: orderIndex })
+      .eq('id', bucketId)
+      .eq('journey_id', journeyId)
+      .select()
+      .single()
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      }
+    }
+
+    return {
+      success: true,
+      data,
     }
   } catch (error) {
     return {
