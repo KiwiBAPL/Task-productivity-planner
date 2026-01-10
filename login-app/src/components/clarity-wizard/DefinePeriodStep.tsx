@@ -4,6 +4,7 @@ import { useAutosave } from '../../hooks/useAutosave'
 import { createJourney, updateJourney, getActiveJourney, getJourneyById, getNextStep, type ClarityJourney } from '../../lib/clarity-wizard'
 import { supabase } from '../../lib/supabase'
 import { getCurrentUser } from '../../lib/auth'
+import { SkeletonForm } from '../SkeletonLoader'
 
 interface PeriodData {
   name: string
@@ -338,8 +339,8 @@ export default function DefinePeriodStep() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <SkeletonForm className="max-w-2xl mx-auto" />
         </div>
       </div>
     )

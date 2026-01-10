@@ -9,6 +9,7 @@ import {
 } from '../../lib/wheel-of-life'
 import { getJourneyById, getNextStep, getPreviousStep, type ClarityJourney } from '../../lib/clarity-wizard'
 import WheelChart from './WheelChart'
+import { SkeletonLoader, SkeletonCard } from '../SkeletonLoader'
 
 const DEFAULT_AREAS = [
   'Health',
@@ -278,8 +279,27 @@ export default function WheelOfLifeStep() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="glass-panel p-8 rounded-3xl max-w-6xl mx-auto">
+            <div className="mb-8 space-y-3">
+              <div className="flex items-center gap-3">
+                <SkeletonLoader className="w-8 h-8 rounded-full" />
+                <SkeletonLoader className="h-3 w-40" />
+              </div>
+              <SkeletonLoader className="h-8 w-1/2" />
+              <SkeletonLoader className="h-4 w-3/4" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="flex items-center justify-center">
+                <SkeletonLoader className="w-[550px] h-[550px] rounded-full" />
+              </div>
+              <div className="space-y-4">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

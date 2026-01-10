@@ -10,6 +10,7 @@ import {
 } from '../../lib/swot'
 import { getJourneyById, getNextStep, getPreviousStep, type ClarityJourney } from '../../lib/clarity-wizard'
 import SWOTVisualization from './SWOTVisualization'
+import { SkeletonGrid, SkeletonLoader } from '../SkeletonLoader'
 
 const SWOT_QUADRANTS: { type: SWOTType; label: string; icon: JSX.Element }[] = [
   {
@@ -270,8 +271,18 @@ export default function SWOTStep() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="glass-panel p-8 rounded-3xl max-w-6xl mx-auto">
+            <div className="mb-8 space-y-3">
+              <div className="flex items-center gap-3">
+                <SkeletonLoader className="w-8 h-8 rounded-full" />
+                <SkeletonLoader className="h-3 w-40" />
+              </div>
+              <SkeletonLoader className="h-8 w-1/2" />
+              <SkeletonLoader className="h-4 w-3/4" />
+            </div>
+            <SkeletonGrid columns={2} rows={2} className="mb-8" />
+          </div>
         </div>
       </div>
     )

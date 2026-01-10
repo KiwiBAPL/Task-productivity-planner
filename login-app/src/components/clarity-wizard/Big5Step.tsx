@@ -4,6 +4,7 @@ import { getJourneyById, getPreviousStep, updateJourney, type ClarityJourney } f
 import { getBig5Buckets, updateBig5BucketOrder, type Big5BucketWithOKRs, type Big5OKR } from '../../lib/big5'
 import Big5Card from './Big5Card'
 import SupportiveContextPanel from './SupportiveContextPanel'
+import { SkeletonCard, SkeletonLoader } from '../SkeletonLoader'
 
 export default function Big5Step() {
   const { journeyId } = useParams<{ journeyId: string }>()
@@ -242,8 +243,25 @@ export default function Big5Step() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="mb-8 space-y-3">
+            <div className="flex items-center gap-3">
+              <SkeletonLoader className="w-8 h-8 rounded-full" />
+              <SkeletonLoader className="h-3 w-40" />
+            </div>
+            <SkeletonLoader className="h-8 w-1/2" />
+            <SkeletonLoader className="h-4 w-3/4" />
+          </div>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex-1 space-y-6">
+              {Array.from({ length: 3 }, (_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+            <div className="lg:w-[380px] shrink-0">
+              <SkeletonCard />
+            </div>
+          </div>
         </div>
       </div>
     )
