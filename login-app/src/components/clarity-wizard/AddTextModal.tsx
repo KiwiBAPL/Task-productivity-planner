@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TextEditor } from './TextEditor'
+import { useFocusTrap, useFocusReturn } from '../../hooks/useFocusManagement'
+import { useEscapeKey } from '../../hooks/useKeyboardShortcuts'
 
 interface AddTextModalProps {
   isOpen: boolean
@@ -12,32 +14,24 @@ function AddTextModal({ isOpen, onClose, onConfirm, initialText }: AddTextModalP
   const [textContent, setTextContent] = useState(initialText || '<p>Enter your text here...</p>')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isEditing = !!initialText
+  const modalRef = useRef<HTMLDivElement>(null)
 
-  // Close modal on Escape key
-  useEffect(() => {
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden'
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen, onClose])
+  // Focus management
+  useFocusTrap(modalRef, { enabled: isOpen })
+  useFocusReturn()
+  useEscapeKey(onClose, { enabled: isOpen && !isSubmitting })
 
   // Reset text content when modal opens
   useEffect(() => {
     if (isOpen) {
       setTextContent(initialText || '<p>Enter your text here...</p>')
       setIsSubmitting(false)
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset'
     }
   }, [isOpen, initialText])
 
@@ -64,7 +58,7 @@ function AddTextModal({ isOpen, onClose, onConfirm, initialText }: AddTextModalP
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
       {/* Modal content */}
-      <div className="relative w-full max-w-2xl">
+      <div ref={modalRef} className="relative w-full max-w-2xl" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div className="glass-panel p-8">
           {/* Close button */}
           <button
@@ -108,7 +102,7 @@ function AddTextModal({ isOpen, onClose, onConfirm, initialText }: AddTextModalP
                 </svg>
               </div>
             </div>
-            <h2 className="text-2xl font-semibold mb-2 tracking-tight">
+            <h2 id="modal-title" className="text-2xl font-semibold mb-2 tracking-tight">
               {isEditing ? 'Edit Text' : 'Add Text to Vision Board'}
             </h2>
             <p className="text-auro-text-secondary text-sm">
@@ -135,6 +129,7 @@ function AddTextModal({ isOpen, onClose, onConfirm, initialText }: AddTextModalP
               onClick={onClose}
               disabled={isSubmitting}
               className="flex-1 px-6 py-3 rounded-full glass-control text-auro-text-primary hover:bg-white/8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Cancel and close dialog"
             >
               Cancel
             </button>
@@ -143,6 +138,8 @@ function AddTextModal({ isOpen, onClose, onConfirm, initialText }: AddTextModalP
               onClick={handleConfirm}
               disabled={isSubmitting}
               className="flex-1 px-8 py-3 rounded-full bg-white text-[#0B0C10] font-medium hover:bg-[#8B5CF6] hover:text-[#F4F6FF] transition-all shadow-[0_10px_26px_-16px_rgba(0,0,0,0.55)] hover:shadow-[0_0_22px_0_rgba(139,92,246,0.30)] disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={isSubmitting ? (isEditing ? 'Updating text' : 'Adding text') : (isEditing ? 'Update text element' : 'Add text to board')}
+              aria-busy={isSubmitting}
             >
               {isSubmitting 
                 ? (isEditing ? 'Updating...' : 'Adding...') 

@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:1',message:'App.tsx loading',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+// #endregion
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
@@ -13,10 +16,33 @@ import Big5Step from './components/clarity-wizard/Big5Step'
 import SummaryView from './components/clarity-wizard/SummaryView'
 import { getCurrentUser, needsProfileSetup } from './lib/auth'
 import { supabase } from './lib/supabase'
+import { useToast } from './hooks/useToast'
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:16',message:'useToast import successful',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+// #endregion
+
+// Create a context for the toast
+import { createContext, useContext } from 'react'
+import { ToastType } from './components/Toast'
+
+interface ToastContextType {
+  showToast: (message: string, type?: ToastType, duration?: number) => void
+}
+
+const ToastContext = createContext<ToastContextType | null>(null)
+
+export function useAppToast() {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useAppToast must be used within ToastProvider')
+  }
+  return context
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [needsSetup, setNeedsSetup] = useState(false)
+  const { showToast, ToastContainer } = useToast()
 
   useEffect(() => {
     async function checkAuth() {
@@ -60,8 +86,10 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <ToastContext.Provider value={{ showToast }}>
+      <BrowserRouter>
+        <ToastContainer />
+        <Routes>
         <Route
           path="/"
           element={
@@ -182,8 +210,9 @@ function App() {
             )
           }
         />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ToastContext.Provider>
   )
 }
 

@@ -9,6 +9,7 @@ import {
   type ClarityJourney,
 } from '../../lib/clarity-wizard'
 import { useAuth } from '../../hooks/useAuth'
+import { SkeletonCard, SkeletonLoader } from '../SkeletonLoader'
 
 export default function ClarityWizardHome() {
   console.log('ClarityWizardHome component rendering')
@@ -176,8 +177,26 @@ export default function ClarityWizardHome() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="glass-panel p-8 rounded-3xl">
+              <SkeletonLoader className="h-8 w-1/2 mb-2" />
+              <SkeletonLoader className="h-4 w-3/4 mb-6" />
+              <SkeletonLoader className="h-10 w-40 rounded-full" />
+            </div>
+            <div className="glass-panel p-6 rounded-3xl">
+              <SkeletonLoader className="h-6 w-1/3 mb-4" />
+              <SkeletonCard />
+            </div>
+            <div className="glass-panel p-6 rounded-3xl">
+              <SkeletonLoader className="h-6 w-1/3 mb-4" />
+              <div className="space-y-3">
+                {Array.from({ length: 2 }, (_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

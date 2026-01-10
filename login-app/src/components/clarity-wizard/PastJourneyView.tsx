@@ -7,6 +7,7 @@ import {
   type ClarityJourney,
 } from '../../lib/clarity-wizard'
 import { supabase } from '../../lib/supabase'
+import { SkeletonCard, SkeletonLoader, SkeletonGrid } from '../SkeletonLoader'
 
 interface WheelOfLifeArea {
   id: string
@@ -121,8 +122,22 @@ export default function PastJourneyView() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12 max-w-7xl">
+          <div className="mb-8 space-y-3">
+            <div className="flex items-center gap-3">
+              <SkeletonLoader className="w-10 h-10 rounded-full" />
+              <SkeletonLoader className="h-3 w-32" />
+            </div>
+            <SkeletonLoader className="h-10 w-1/2" />
+            <SkeletonLoader className="h-4 w-1/3" />
+          </div>
+          <SkeletonCard className="mb-8" />
+          <SkeletonGrid columns={2} rows={1} className="mb-8" />
+          <div className="space-y-6">
+            {Array.from({ length: 3 }, (_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         </div>
       </div>
     )

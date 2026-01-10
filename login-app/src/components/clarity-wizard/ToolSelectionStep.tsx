@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getJourneyById, getNextStep, type ClarityJourney } from '../../lib/clarity-wizard'
+import { SkeletonCard, SkeletonLoader } from '../SkeletonLoader'
 
 interface Tool {
   id: string
@@ -120,8 +121,22 @@ export default function ToolSelectionStep() {
           <div className="absolute inset-0 gradient-radial-top-left" />
           <div className="absolute inset-0 gradient-radial-mid-left" />
         </div>
-        <div className="relative z-10 container mx-auto px-6 py-12 flex items-center justify-center min-h-screen">
-          <div className="text-auro-text-secondary">Loading...</div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-8 space-y-3">
+              <div className="flex items-center gap-3">
+                <SkeletonLoader className="w-8 h-8 rounded-full" />
+                <SkeletonLoader className="h-3 w-40" />
+              </div>
+              <SkeletonLoader className="h-8 w-1/2" />
+              <SkeletonLoader className="h-4 w-3/4" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {Array.from({ length: 4 }, (_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     )

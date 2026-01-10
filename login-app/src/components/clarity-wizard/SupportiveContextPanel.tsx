@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { getWheelOfLifeAreas, type WheelOfLifeArea } from '../../lib/wheel-of-life'
 import { getSWOTEntries, type SWOTEntry } from '../../lib/swot'
+// Skeleton components reserved for future loading state enhancement
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/2d17eab2-d1b0-4bfa-8292-fc3e189d183d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupportiveContextPanel.tsx:1',message:'SupportiveContextPanel loading',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+// #endregion
 
 interface SupportiveContextPanelProps {
   journeyId: string
