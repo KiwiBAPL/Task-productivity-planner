@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase'
 import { AvatarIcon, type AvatarPreset } from './avatars/PresetAvatars'
 import ProfileEditModal from './ProfileEditModal'
 import AvatarSelectionModal from './AvatarSelectionModal'
+import { getActiveJourney, type ClarityJourney } from '../lib/clarity-wizard'
+import { getVisionBoardVersion, getVisionBoardImages, type VisionBoardVersion, type VisionBoardImage } from '../lib/vision-board'
+import { getBig5Buckets, type Big5BucketWithOKRs } from '../lib/big5'
 
 interface Task {
   id: string
@@ -24,6 +27,15 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+
+  // Clarity Wizard data state
+  const [activeJourney, setActiveJourney] = useState<ClarityJourney | null>(null)
+  const [visionBoardVersion, setVisionBoardVersion] = useState<VisionBoardVersion | null>(null)
+  const [visionBoardImages, setVisionBoardImages] = useState<VisionBoardImage[]>([])
+  const [big5Buckets, setBig5Buckets] = useState<Big5BucketWithOKRs[]>([])
+  const [isClarityDataLoading, setIsClarityDataLoading] = useState(true)
+  const [isVisionBoardModalOpen, setIsVisionBoardModalOpen] = useState(false)
+  const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true)
 
   // Mock tasks data
   const tasks: Record<string, Task[]> = {
@@ -133,6 +145,50 @@ function Dashboard() {
     loadUser()
   }, [])
 
+  // Load Clarity Wizard data (active journey, vision board, Big 5)
+  useEffect(() => {
+    async function loadClarityData() {
+      setIsClarityDataLoading(true)
+      try {
+        // Get active journey
+        const journeyResult = await getActiveJourney()
+        if (journeyResult.success && journeyResult.data) {
+          const journey = journeyResult.data as ClarityJourney
+          setActiveJourney(journey)
+
+          // Load vision board if it exists
+          const visionResult = await getVisionBoardVersion(journey.id)
+          if (visionResult.success && visionResult.data) {
+            const version = visionResult.data as VisionBoardVersion
+            // Only show if it's current AND committed
+            if (version.is_current && version.is_committed && version.id) {
+              setVisionBoardVersion(version)
+              
+              // Load images for this version
+              const imagesResult = await getVisionBoardImages(version.id)
+              if (imagesResult.success && imagesResult.data) {
+                setVisionBoardImages(imagesResult.data as VisionBoardImage[])
+              }
+            }
+          }
+
+          // Load Big 5 buckets
+          const big5Result = await getBig5Buckets(journey.id)
+          if (big5Result.success && big5Result.data) {
+            const buckets = big5Result.data as Big5BucketWithOKRs[]
+            setBig5Buckets(buckets)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading Clarity Wizard data:', error)
+      } finally {
+        setIsClarityDataLoading(false)
+      }
+    }
+    
+    loadClarityData()
+  }, [])
+
   // Reload profile after updates
   async function reloadProfile() {
     const currentUser = await getCurrentUser()
@@ -228,7 +284,7 @@ function Dashboard() {
             {[
               { 
                 icon: 'home', 
-                label: 'Home',
+                label: 'My Planning Space',
                 route: '/dashboard'
               },
               { 
@@ -273,7 +329,7 @@ function Dashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-y-auto">
           {/* Top Bar */}
           <div className="h-16 glass-panel flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
@@ -330,22 +386,8 @@ function Dashboard() {
 
           {/* Project Header */}
           <div className="px-6 py-5">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-auro-accent-soft flex items-center justify-center">
-                <svg className="w-6 h-6 text-auro-accent" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold text-auro-text-primary">DentalPro</h1>
-                <div className="flex items-center gap-4 mt-1 text-xs text-auro-text-tertiary uppercase tracking-wider">
-                  <span>CREATED Dec 3, 9:52 am</span>
-                  <span>•</span>
-                  <span>DUE DATE JAN 24, 00:00 am</span>
-                  <span>•</span>
-                  <span>TRACKED TIME 5 days, 39 sec</span>
-                </div>
-              </div>
+            <div className="mb-4">
+              <h1 className="text-2xl font-semibold text-auro-text-primary">Planning Overview</h1>
             </div>
 
             {/* Tabs */}
@@ -377,6 +419,166 @@ function Dashboard() {
                 <option>Priority</option>
               </select>
             </div>
+
+            {/* Vision Board Section */}
+            {!isClarityDataLoading && activeJourney && visionBoardVersion && visionBoardImages.length > 0 && (
+              <div className="mb-6">
+                <div className="glass-card p-6 rounded-3xl">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-auro-text-primary mb-1">Vision Board</h2>
+                    <p className="text-sm text-auro-text-secondary">Your current vision for this journey</p>
+                  </div>
+                  
+                  {/* Vision Board Banner - Clickable */}
+                  <div
+                    className="relative mx-auto rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
+                    style={{
+                      width: '100%',
+                      height: '400px',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                    }}
+                    onClick={() => setIsVisionBoardModalOpen(true)}
+                  >
+                    {/* Click hint overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center z-10 pointer-events-none">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity px-4 py-2 rounded-full glass-control text-auro-text-primary text-sm font-medium">
+                        Click to view full vision board
+                      </div>
+                    </div>
+
+                    {/* Render vision board images and text elements (scaled for banner) */}
+                    {visionBoardImages
+                      .sort((a, b) => (a.z_index || 0) - (b.z_index || 0))
+                      .map((image) => {
+                        const isText = image.element_type === 'text'
+                        const x = image.position_x ?? 0
+                        const y = image.position_y ?? 0
+                        const rotation = image.rotation ?? 0
+                        const width = image.width ?? (isText ? 200 : 200)
+                        const height = image.height ?? (isText ? 100 : 200)
+                        const CANVAS_WIDTH = 1200
+                        const CANVAS_HEIGHT = 1600
+
+                        return (
+                          <div
+                            key={image.id}
+                            className="absolute"
+                            style={{
+                              left: `${(x / CANVAS_WIDTH) * 100}%`,
+                              top: `${(y / CANVAS_HEIGHT) * 100}%`, // Percentage scales automatically with container
+                              transform: `rotate(${rotation}deg)`,
+                              width: `${(width / CANVAS_WIDTH) * 100}%`,
+                              height: `${(height / CANVAS_HEIGHT) * 100}%`, // Percentage scales automatically with container
+                              zIndex: image.z_index || 0,
+                            }}
+                          >
+                            {isText ? (
+                              // Text element
+                              <div className="relative w-full h-full rounded-lg overflow-visible shadow-lg glass-card p-2 border border-auro-stroke-subtle">
+                                <div
+                                  className="text-auro-text-primary text-xs break-words"
+                                  dangerouslySetInnerHTML={{ __html: image.text_content || '<p>Text</p>' }}
+                                  style={{ wordBreak: 'break-word', fontSize: '0.75rem' }}
+                                />
+                              </div>
+                            ) : (
+                              // Image element
+                              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
+                                {image.preview_url ? (
+                                  <img
+                                    src={image.preview_url}
+                                    alt={image.caption || 'Vision board image'}
+                                    className="w-full h-full object-cover"
+                                    draggable={false}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-auro-surface2">
+                                    <svg className="w-8 h-8 text-auro-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {image.caption && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                    <p className="text-white text-xs font-medium line-clamp-1">{image.caption}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Big 5 Outcomes Section */}
+            {!isClarityDataLoading && activeJourney && big5Buckets.length > 0 && (
+              <div className="mb-6">
+                <div className="glass-card p-6 rounded-3xl">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-auro-text-primary mb-1">Big 5 Outcomes</h2>
+                    <p className="text-sm text-auro-text-secondary">Your key focus areas and objectives</p>
+                  </div>
+                  
+                  {/* Big 5 List */}
+                  <div className="space-y-4">
+                    {big5Buckets
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((bucket, index) => (
+                        <div key={bucket.id || index} className="glass-panel p-5 rounded-2xl">
+                          {/* Bucket Title and Statement */}
+                          <div className="mb-4">
+                            <div className="flex items-start gap-3 mb-2">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-auro-accent-soft flex items-center justify-center">
+                                <span className="text-sm font-bold text-auro-accent">{index + 1}</span>
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-auro-text-primary mb-1">{bucket.title}</h3>
+                                <p className="text-sm text-auro-text-secondary">{bucket.statement}</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* OKRs List */}
+                          {bucket.okrs && bucket.okrs.length > 0 && (
+                            <div className="ml-11 space-y-2">
+                              <h4 className="text-xs font-medium text-auro-text-tertiary uppercase tracking-wider mb-2">Key Results</h4>
+                              {bucket.okrs
+                                .filter((okr) => okr.description && okr.description.trim().length > 0)
+                                .sort((a, b) => a.order_index - b.order_index)
+                                .map((okr, okrIndex) => (
+                                  <div key={okr.id || okrIndex} className="flex items-start gap-3 py-2">
+                                    <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-auro-accent mt-2"></div>
+                                    <div className="flex-1">
+                                      <p className="text-sm text-auro-text-primary mb-1">{okr.description}</p>
+                                      {(okr.target_value_number !== null || okr.target_value_text) && (
+                                        <div className="flex items-center gap-2 text-xs text-auro-text-tertiary">
+                                          <span className="px-2 py-0.5 rounded-full bg-auro-surface2 capitalize">
+                                            {okr.metric_type}
+                                          </span>
+                                          {okr.target_value_number !== null && (
+                                            <span>Target: {okr.target_value_number}</span>
+                                          )}
+                                          {okr.target_value_text && (
+                                            <span>Target: {okr.target_value_text}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Kanban Board */}
             <div className="flex gap-4 overflow-x-auto pb-4">
@@ -578,7 +780,25 @@ function Dashboard() {
         </main>
 
         {/* Right Sidebar */}
-        <aside className="w-[380px] glass-panel p-4 flex flex-col gap-4 overflow-y-auto">
+        <aside
+          className={`glass-panel p-4 flex flex-col gap-4 overflow-y-auto transition-all duration-300 relative ${
+            isRightSidebarVisible ? 'w-[380px]' : 'w-0 overflow-hidden p-0 opacity-0'
+          }`}
+        >
+          {/* Hide Sidebar Button */}
+          {isRightSidebarVisible && (
+            <button
+              onClick={() => setIsRightSidebarVisible(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center glass-control rounded-md hover:bg-white/10 transition-colors z-10"
+              aria-label="Hide sidebar"
+              title="Hide sidebar"
+            >
+              <svg className="w-4 h-4 text-auro-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
           {/* Recent Project Work */}
           <div>
             <h3 className="text-sm font-semibold text-auro-text-primary mb-3">Your recent project work</h3>
@@ -757,6 +977,140 @@ function Dashboard() {
         currentPreset={profile?.avatar_preset as AvatarPreset | null}
         currentPreviewUrl={profile?.avatar_url || null}
       />
+
+      {/* Show Sidebar Button - Appears when sidebar is hidden */}
+      {!isRightSidebarVisible && (
+        <button
+          onClick={() => setIsRightSidebarVisible(true)}
+          className="fixed right-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 flex items-center justify-center glass-control rounded-full hover:bg-white/10 transition-all shadow-lg backdrop-blur-sm"
+          aria-label="Show sidebar"
+          title="Show sidebar"
+        >
+          <svg
+            className="w-5 h-5 text-auro-text-primary"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            style={{ transform: 'rotate(180deg)' }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Vision Board Modal */}
+      {isVisionBoardModalOpen && visionBoardVersion && visionBoardImages.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsVisionBoardModalOpen(false)
+            }
+          }}
+        >
+          <div className="relative w-full max-w-5xl max-h-[90vh] bg-auro-bg0 rounded-3xl overflow-hidden glass-panel shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-auro-stroke-subtle">
+              <div>
+                <h2 className="text-2xl font-semibold text-auro-text-primary">Vision Board</h2>
+                <p className="text-sm text-auro-text-secondary mt-1">Your current vision for this journey</p>
+              </div>
+              <button
+                onClick={() => setIsVisionBoardModalOpen(false)}
+                className="w-10 h-10 flex items-center justify-center glass-control rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Close modal"
+              >
+                <svg className="w-5 h-5 text-auro-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="relative mx-auto" style={{ maxWidth: '1200px' }}>
+                <div
+                  className="relative rounded-2xl overflow-hidden mx-auto"
+                  style={{
+                    width: '100%',
+                    paddingBottom: '133.33%', // 1200:1600 aspect ratio
+                    position: 'relative',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <div className="absolute inset-0">
+                    {/* Render vision board images and text elements at full size */}
+                    {visionBoardImages
+                      .sort((a, b) => (a.z_index || 0) - (b.z_index || 0))
+                      .map((image) => {
+                        const isText = image.element_type === 'text'
+                        const x = image.position_x ?? 0
+                        const y = image.position_y ?? 0
+                        const rotation = image.rotation ?? 0
+                        const width = image.width ?? (isText ? 200 : 200)
+                        const height = image.height ?? (isText ? 100 : 200)
+                        const CANVAS_WIDTH = 1200
+                        const CANVAS_HEIGHT = 1600
+
+                        return (
+                          <div
+                            key={image.id}
+                            className="absolute"
+                            style={{
+                              left: `${(x / CANVAS_WIDTH) * 100}%`,
+                              top: `${(y / CANVAS_HEIGHT) * 100}%`,
+                              transform: `rotate(${rotation}deg)`,
+                              width: `${(width / CANVAS_WIDTH) * 100}%`,
+                              height: `${(height / CANVAS_HEIGHT) * 100}%`,
+                              zIndex: image.z_index || 0,
+                            }}
+                          >
+                            {isText ? (
+                              // Text element
+                              <div className="relative w-full h-full rounded-lg overflow-visible shadow-lg glass-card p-3 border border-auro-stroke-subtle">
+                                <div
+                                  className="text-auro-text-primary text-sm break-words"
+                                  dangerouslySetInnerHTML={{ __html: image.text_content || '<p>Text</p>' }}
+                                  style={{ wordBreak: 'break-word' }}
+                                />
+                              </div>
+                            ) : (
+                              // Image element
+                              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
+                                {image.preview_url ? (
+                                  <img
+                                    src={image.preview_url}
+                                    alt={image.caption || 'Vision board image'}
+                                    className="w-full h-full object-cover"
+                                    draggable={false}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-auro-surface2">
+                                    <svg className="w-12 h-12 text-auro-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {image.caption && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                    <p className="text-white text-xs font-medium line-clamp-2">{image.caption}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
