@@ -8,6 +8,10 @@ import AvatarSelectionModal from './AvatarSelectionModal'
 import { getActiveJourney, type ClarityJourney } from '../lib/clarity-wizard'
 import { getVisionBoardVersion, getVisionBoardImages, type VisionBoardVersion, type VisionBoardImage } from '../lib/vision-board'
 import { getBig5Buckets, type Big5BucketWithOKRs } from '../lib/big5'
+import { getWheelOfLifeAreas, type WheelOfLifeArea } from '../lib/wheel-of-life'
+import { getSWOTEntries, type SWOTEntry } from '../lib/swot'
+import WheelChart from './clarity-wizard/WheelChart'
+import SWOTVisualization from './clarity-wizard/SWOTVisualization'
 
 interface Task {
   id: string
@@ -33,6 +37,8 @@ function Dashboard() {
   const [visionBoardVersion, setVisionBoardVersion] = useState<VisionBoardVersion | null>(null)
   const [visionBoardImages, setVisionBoardImages] = useState<VisionBoardImage[]>([])
   const [big5Buckets, setBig5Buckets] = useState<Big5BucketWithOKRs[]>([])
+  const [wheelAreas, setWheelAreas] = useState<WheelOfLifeArea[]>([])
+  const [swotEntries, setSwotEntries] = useState<SWOTEntry[]>([])
   const [isClarityDataLoading, setIsClarityDataLoading] = useState(true)
   const [isVisionBoardModalOpen, setIsVisionBoardModalOpen] = useState(false)
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true)
@@ -178,6 +184,20 @@ function Dashboard() {
             const buckets = big5Result.data as Big5BucketWithOKRs[]
             setBig5Buckets(buckets)
           }
+
+          // Load Wheel of Life areas
+          const wheelResult = await getWheelOfLifeAreas(journey.id)
+          if (wheelResult.success && wheelResult.data) {
+            const areas = Array.isArray(wheelResult.data) ? wheelResult.data : [wheelResult.data]
+            setWheelAreas(areas)
+          }
+
+          // Load SWOT entries
+          const swotResult = await getSWOTEntries(journey.id)
+          if (swotResult.success && swotResult.data) {
+            const entries = Array.isArray(swotResult.data) ? swotResult.data : [swotResult.data]
+            setSwotEntries(entries)
+          }
         }
       } catch (error) {
         console.error('Error loading Clarity Wizard data:', error)
@@ -285,7 +305,12 @@ function Dashboard() {
               { 
                 icon: 'home', 
                 label: 'My Planning Space',
-                route: '/dashboard'
+                route: '/dashboard',
+                svg: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                )
               },
               { 
                 icon: 'sparkles', 
@@ -297,15 +322,15 @@ function Dashboard() {
                   </svg>
                 )
               },
-              { icon: 'bell', label: 'Notifications' },
-              { icon: 'chat', label: 'Chat' },
-              { icon: 'folder', label: 'Files', badge: 2 },
-              { icon: 'users', label: 'Team' },
-              { icon: 'chart', label: 'Analytics' },
-              { icon: 'help', label: 'Help' },
-              { icon: 'settings', label: 'Settings' },
-              { icon: 'integrations', label: 'Integrations' },
-              { icon: 'apps', label: 'Apps' },
+              { icon: 'bell', label: 'Notifications', route: '/notifications' },
+              { icon: 'chat', label: 'Chat', route: '/chat' },
+              { icon: 'folder', label: 'Files', badge: 2, route: '/files' },
+              { icon: 'users', label: 'Team', route: '/team' },
+              { icon: 'chart', label: 'Analytics', route: '/analytics' },
+              { icon: 'help', label: 'Help', route: '/help' },
+              { icon: 'settings', label: 'Settings', route: '/settings' },
+              { icon: 'integrations', label: 'Integrations', route: '/integrations' },
+              { icon: 'apps', label: 'Apps', route: '/apps' },
             ].map((item) => (
               <button
                 key={item.icon}
@@ -576,6 +601,39 @@ function Dashboard() {
                         </div>
                       ))}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tools Section - Wheel of Life and SWOT side by side */}
+            {!isClarityDataLoading && activeJourney && (wheelAreas.length > 0 || swotEntries.length > 0) && (
+              <div className="mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Wheel of Life Tile */}
+                  {wheelAreas.length > 0 && (
+                    <div className="glass-card p-6 rounded-3xl">
+                      <div className="mb-4">
+                        <h2 className="text-xl font-semibold text-auro-text-primary mb-1">Wheel of Life</h2>
+                        <p className="text-sm text-auro-text-secondary">Your life balance assessment</p>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <WheelChart areas={wheelAreas} size={300} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SWOT Analysis Tile */}
+                  {swotEntries.length > 0 && (
+                    <div className="glass-card p-6 rounded-3xl">
+                      <div className="mb-4">
+                        <h2 className="text-xl font-semibold text-auro-text-primary mb-1">SWOT Analysis</h2>
+                        <p className="text-sm text-auro-text-secondary">Your strengths, weaknesses, opportunities, and threats</p>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <SWOTVisualization entries={swotEntries} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
